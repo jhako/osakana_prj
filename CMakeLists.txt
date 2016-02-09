@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 2.8.11)
+cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
 
 project (osakana_prj)
 
@@ -37,8 +37,6 @@ find_package(OpenCV REQUIRED)
 
 include_directories(${OPENGL_INCLUDE_DIR} ${GLUT_INCLUDE_DIR})
 
-set(CMAKE_CXX_FLAGS "-g")
-
 add_executable (osakana_prj
 	src/main.cpp
 	src/behavior.cpp
@@ -46,6 +44,7 @@ add_executable (osakana_prj
 	src/shark.cpp
 	src/world.cpp
 	src/teximage.cpp
+	src/target.cpp
 )
 
 
@@ -55,6 +54,9 @@ target_link_libraries(osakana_prj
 	${OpenCV_LIBS}
 )
 
+target_compile_features(osakana_prj PRIVATE cxx_range_for)
+
 IF(UNIX)
-  TARGET_LINK_LIBRARIES(osakana_prj m)
+	set(CMAKE_CXX_FLAGS "-g")
+	TARGET_LINK_LIBRARYES(osakana_prj m)
 ENDIF(UNIX)
