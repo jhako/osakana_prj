@@ -44,6 +44,7 @@ add_executable (osakana_prj
 	src/shark.cpp
 	src/world.cpp
 	src/teximage.cpp
+	src/target.cpp
 )
 
 
