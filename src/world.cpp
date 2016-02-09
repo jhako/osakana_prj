@@ -6,15 +6,18 @@
 #include "teximage.h"
 #include "fish.h"
 #include "shark.h"
+#include "target.h"
+
 
 //X・Y方向にどれだけ分割するか
 const int PARTITION_X = 10;
 const int PARTITION_Y = 10;
 
+
 World::World() : width(640), height(640)
 {
 	partitons.resize(PARTITION_X*PARTITION_Y);
-	for (int i = 0; i < 400; ++i)
+	for (int i = 0; i < 200; ++i)
 	{
 		//位置はランダム、初期速度はゼロ
 		Fish* fish = new Fish(vec2d(100 + (double)rand() / RAND_MAX * 400,
@@ -33,6 +36,9 @@ World::World() : width(640), height(640)
 	sharks.push_back(new Shark(vec2d(100, 100), vec2d(0, 0)));
 	sharks.push_back(new Shark(vec2d(250, 250), vec2d(0, 0)));
 	sharks.push_back(new Shark(vec2d(450, 450), vec2d(0, 0)));
+
+	//テストターゲット
+	targets.push_back(new Target(vec2d(320, 200)));
 }
 
 World::~World()
@@ -49,10 +55,20 @@ World::~World()
 		delete shark;
 		sharks.pop_back();
 	}
+	for (int i = 0; i < targets.size(); ++i)
+	{
+		Target* target = targets.back();
+		delete target;
+		targets.pop_back();
+	}
 }
 
 void World::update()
 {
+	for (auto& tar : targets)
+	{
+		tar->update(this);
+	}
 	for (int i = 0; i < fishes.size(); ++i)
 	{
 		//各fishがどこの領域に属するかを更新
@@ -86,10 +102,20 @@ void World::render()
 	glClear(GL_COLOR_BUFFER_BIT);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
+
+	for (auto& tar : targets)
+	{
+		tar->render(this);
+	}
 	for (int i = 0; i < fishes.size(); ++i)
+	{
 		fishes.at(i)->render(this);
+	}
 	for (int i = 0; i < sharks.size(); ++i)
+	{
 		sharks.at(i)->render(this);
+	}
+
 	glutSwapBuffers();
 }
 

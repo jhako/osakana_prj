@@ -1,16 +1,19 @@
 ﻿
+#include <list>
+#include <stdio.h>
+#include <stdlib.h>
+#include <GL/glut.h>
 #include "fish.h"
 #include "teximage.h"
 #include "world.h"
 #include "behavior.h"
 #include "shark.h"
-#include <list>
-#include <stdio.h>
-#include <stdlib.h>
-#include <GL/glut.h>
+#include "target.h"
 
 //近傍とみなす限界距離
-const int RADIUS = 50;
+const int RadiusForNeighbors = 50;
+const int RadiusForEnemies = 70;
+const int RadiusForTargets = 90;
 
 void Fish::init(vec2d pos_, vec2d velo_)
 {
@@ -51,7 +54,7 @@ void Fish::update(World* p_world)
 
 		if (lsq < 0.0001)
 			continue; //自分自身
-		if (lsq < RADIUS*RADIUS)
+		if (lsq < RadiusForNeighbors*RadiusForNeighbors)
 		{
 			neighbors.push_back(lfish.at(i));
 		}
@@ -63,7 +66,7 @@ void Fish::update(World* p_world)
 	for (int i = 0; i < lshark.size(); ++i)
 	{
 		double lsq = (pos - lshark.at(i)->get_pos()).lengthsq();
-		if (lsq < RADIUS*RADIUS)
+		if (lsq < RadiusForEnemies*RadiusForEnemies)
 		{
 			if (!nearest_enemy)
 			{
@@ -77,6 +80,26 @@ void Fish::update(World* p_world)
 		}
 	}
 
+	//最も近傍のターゲットを探す
+	Target* nearest_target = NULL;
+	std::vector<Target*>& ltarget = p_world->get_targets();
+	for(auto& tar : ltarget)
+	{
+		double lsq = (pos - tar->get_pos()).lengthsq();
+		if (lsq < RadiusForTargets*RadiusForTargets)
+		{
+			if (!nearest_target)
+			{
+				nearest_target = tar;
+				continue;
+			}
+			if (lsq < (nearest_target->get_pos() - pos).lengthsq())
+			{
+				nearest_target = tar;
+			}
+		}
+	}
+
 	vec2d force;
 	double fmax = 6.65;
 
@@ -85,7 +108,9 @@ void Fish::update(World* p_world)
 	for (;;)
 	{
 		if (nearest_enemy)
+		{
 			force += behavior->flee(this, p_world, nearest_enemy);
+		}
 		if (force.lengthsq() > fmax*fmax) break;
 		force += behavior->separation(this, p_world, neighbors);
 		if (force.lengthsq() > fmax*fmax) break;
@@ -93,7 +118,12 @@ void Fish::update(World* p_world)
 		if (force.lengthsq() > fmax*fmax) break;
 		force += behavior->cohesion(this, p_world, neighbors);
 		if (force.lengthsq() > fmax*fmax) break;
+		if (nearest_target)
+		{
+			force += behavior->arrive(this, p_world, nearest_target->get_pos());
+		}
 		force += behavior->randomwalk(this, p_world);
+		if (force.lengthsq() > fmax*fmax) break;
 		break;
 	}
 

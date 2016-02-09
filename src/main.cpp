@@ -2,11 +2,16 @@
 #include <stdlib.h>
 #include <time.h>
 #include <GL/glut.h>
+#include <chrono>
+#include <thread>
 #include "world.h"
 
 
 //Worldの実体（updateとdisplayで使うためグローバル）
 World* p_world;
+
+const int FPS_micro = 1000000.0 / 60; //60 FPS
+std::chrono::time_point<std::chrono::system_clock> last_time;
 
 
 static void display()
@@ -27,8 +32,21 @@ static void keyboard(unsigned char key, int x, int y)
 static void update()
 {
 	p_world->update();
+
 	//更新のたびに再描画を行う
 	glutPostRedisplay();
+
+	auto current_time = std::chrono::system_clock::now();
+
+	//指定したFPSにフレームレートを維持
+	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(current_time - last_time).count();
+	if (duration < FPS_micro)
+	{
+		std::this_thread::sleep_for(std::chrono::microseconds(FPS_micro - duration));
+	}
+
+	last_time = current_time;
+
 }
 
 int main(int argc, char *argv[])
@@ -52,6 +70,7 @@ int main(int argc, char *argv[])
 	glutDisplayFunc(display);
 	glutKeyboardFunc(keyboard);
 	glutIdleFunc(update);
+	last_time = std::chrono::system_clock::now();
 
 	//メインループの実行
 	glutMainLoop();

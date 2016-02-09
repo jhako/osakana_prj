@@ -21,6 +21,10 @@ TexImage::TexImage(const char* fn)
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	img = new cv::Mat();
 	*img = cv::imread(fn, -1);
+	if (img->empty())
+	{
+		printf("ERROR : 画像の読み込みに失敗 , %s\n", fn);
+	}
 	cv::flip(*img, *img, 0);
 }
 
@@ -32,6 +36,7 @@ TexImage::~TexImage()
 //cv::Matのデータを用いて、テクスチャとしてOpenGLで描画する
 void TexImage::render(int x, int y)
 {
+	glColor3f(1.0f, 1.0f, 1.0f);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img->size().width, img->size().height, 0, GL_BGRA, GL_UNSIGNED_BYTE, img->data);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -55,6 +60,7 @@ void TexImage::render(int x, int y)
 //回転あり
 void TexImage::render(int x, int y, double rad)
 {
+	glColor3f(1.0f, 1.0f, 1.0f);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img->size().width, img->size().height, 0, GL_BGRA, GL_UNSIGNED_BYTE, img->data);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);

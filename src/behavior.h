@@ -27,4 +27,6 @@ public:
 	vec2d flee(Fish* self, World* p_world, Fish* enemy);
 	//放浪行動
 	vec2d randomwalk(Fish* self, World* p_world);
+	//到着行動
+	vec2d arrive(Fish* self, World* p_world, vec2d target_pos);
 };

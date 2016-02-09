@@ -13,6 +13,7 @@ const double KC = 0.06;  //結合
 const double KR = 0.1;   //放浪
 const double KSe = 0.3;  //追従
 const double KF = 0.3;   //逃避
+const double KArr = 0.05;   //到着
 
 
 vec2d Behavior::separation(Fish* self, World* p_world, std::list<Fish*>& neighbors)
@@ -93,4 +94,20 @@ vec2d Behavior::flee(Fish* self, World* p_world, Fish* enemy)
 	double lookahead = toenemy.length() / (self->get_maxspeed() + enemy->get_velocity().length());
 	vec2d tovec = enemy->get_pos() + enemy->get_velocity() * lookahead;
 	return (self->get_pos() - enemy->get_pos()).norm()*self->get_maxspeed() * KF;
+}
+
+vec2d Behavior::arrive(Fish * self, World * p_world, vec2d target_pos)
+{
+	//減速をはじめる半径
+	constexpr auto SlowingRadius = 30;
+	vec2d tovec = target_pos - self->get_pos();
+	auto length = tovec.length();
+	if (length < SlowingRadius)
+	{
+		return tovec.norm() * self->get_maxspeed() * (length / SlowingRadius) * KArr;
+	}
+	else
+	{
+		return tovec.norm() * self->get_maxspeed() * KArr;
+	}
 }
