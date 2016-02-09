@@ -56,5 +56,5 @@ target_link_libraries(osakana_prj
 )
 
 IF(UNIX)
-  TARGET_LINK_LIBRARYES(osakana_prj m)
+  TARGET_LINK_LIBRARIES(osakana_prj m)
 ENDIF(UNIX)

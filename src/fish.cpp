@@ -26,6 +26,7 @@ Fish::Fish(vec2d pos_, vec2d velo_)
 {
     init(pos_, velo_);
     static TexImage img("osakana.png");
+    //static TexImage img("../resource/osakana.png");
     tex = &img;
 }
 
