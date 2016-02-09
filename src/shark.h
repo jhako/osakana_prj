@@ -9,8 +9,8 @@ class World;
 class Shark :public Fish
 {
 public:
-    Shark(vec2d pos_, vec2d velo_);
+	Shark(vec2d pos_, vec2d velo_);
 
-    //update関数のオーバーライド
-    void update(World* p_world);
+	//update関数のオーバーライド
+	void update(World* p_world);
 };
