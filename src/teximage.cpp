@@ -17,80 +17,86 @@
 
 TexImage::TexImage(const char* fn)
 {
-    //ファイルを読み込み、cv::Matに変換
-    glPixelStorei(GL_UNPACK_ALIGNMENT,1);
-    img = new cv::Mat();
-    *img = cv::imread(fn, -1);
-    cv::flip(*img, *img, 0);
+	//ファイルを読み込み、cv::Matに変換
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	img = new cv::Mat();
+	*img = cv::imread(fn, -1);
+	if (img->empty())
+	{
+		printf("ERROR : 画像の読み込みに失敗 , %s\n", fn);
+	}
+	cv::flip(*img, *img, 0);
 }
 
 TexImage::~TexImage()
 {
-    delete img;
+	delete img;
 }
 
 //cv::Matのデータを用いて、テクスチャとしてOpenGLで描画する
 void TexImage::render(int x, int y)
 {
-    glPixelStorei(GL_UNPACK_ALIGNMENT,4);
-    glTexImage2D(GL_TEXTURE_2D , 0 , GL_RGBA, img->size().width,img->size().height,0, GL_BGRA,GL_UNSIGNED_BYTE,img->data);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glColor3f(1.0f, 1.0f, 1.0f);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img->size().width, img->size().height, 0, GL_BGRA, GL_UNSIGNED_BYTE, img->data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-    glEnable(GL_TEXTURE_2D);
-    glNormal3d(0.0, 0.0, 1.0);
-    glBegin(GL_QUADS);
-    glTexCoord2d(0.0, 1.0);
-    glVertex3d(x, y, 0.0);
-    glTexCoord2d(1.0, 1.0);
-    glVertex3d(x+img->size().width, y, 0.0);
-    glTexCoord2d(1.0, 0.0);
-    glVertex3d(x+img->size().width, y+img->size().height, 0.0);
-    glTexCoord2d(0.0, 0.0);
-    glVertex3d(x, y+img->size().height, 0.0);
-    glEnd();
-    glDisable(GL_TEXTURE_2D);
+	glEnable(GL_TEXTURE_2D);
+	glNormal3d(0.0, 0.0, 1.0);
+	glBegin(GL_QUADS);
+	glTexCoord2d(0.0, 1.0);
+	glVertex3d(x, y, 0.0);
+	glTexCoord2d(1.0, 1.0);
+	glVertex3d(x + img->size().width, y, 0.0);
+	glTexCoord2d(1.0, 0.0);
+	glVertex3d(x + img->size().width, y + img->size().height, 0.0);
+	glTexCoord2d(0.0, 0.0);
+	glVertex3d(x, y + img->size().height, 0.0);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
 }
 
 //回転あり
 void TexImage::render(int x, int y, double rad)
 {
-    glPixelStorei(GL_UNPACK_ALIGNMENT,4);
-    glTexImage2D(GL_TEXTURE_2D , 0 , GL_RGBA, img->size().width,img->size().height,0, GL_BGRA,GL_UNSIGNED_BYTE,img->data);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glColor3f(1.0f, 1.0f, 1.0f);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img->size().width, img->size().height, 0, GL_BGRA, GL_UNSIGNED_BYTE, img->data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-    glEnable(GL_TEXTURE_2D);
-    glNormal3d(0.0, 0.0, 1.0);
-    glBegin(GL_QUADS);
+	glEnable(GL_TEXTURE_2D);
+	glNormal3d(0.0, 0.0, 1.0);
+	glBegin(GL_QUADS);
 
-    vec2d center = vec2d(x+img->size().width/2.0, y+img->size().height/2.0);
-    vec2d v;
-    glTexCoord2d(0.0, 1.0);
-    v = center + vec2d(-img->size().width/2.0, -img->size().height/2.0).rotate(rad);
-    glVertex3d(v.x, v.y, 0.0);
+	vec2d center = vec2d(x + img->size().width / 2.0, y + img->size().height / 2.0);
+	vec2d v;
+	glTexCoord2d(0.0, 1.0);
+	v = center + vec2d(-img->size().width / 2.0, -img->size().height / 2.0).rotate(rad);
+	glVertex3d(v.x, v.y, 0.0);
 
-    glTexCoord2d(1.0, 1.0);
-    v = center + vec2d(img->size().width/2.0, -img->size().height/2.0).rotate(rad);
-    glVertex3d(v.x, v.y, 0.0);
+	glTexCoord2d(1.0, 1.0);
+	v = center + vec2d(img->size().width / 2.0, -img->size().height / 2.0).rotate(rad);
+	glVertex3d(v.x, v.y, 0.0);
 
-    glTexCoord2d(1.0, 0.0);
-    v = center + vec2d(img->size().width/2.0, img->size().height/2.0).rotate(rad);
-    glVertex3d(v.x, v.y, 0.0);
+	glTexCoord2d(1.0, 0.0);
+	v = center + vec2d(img->size().width / 2.0, img->size().height / 2.0).rotate(rad);
+	glVertex3d(v.x, v.y, 0.0);
 
-    glTexCoord2d(0.0, 0.0);
-    v = center + vec2d(-img->size().width/2.0, img->size().height/2.0).rotate(rad);
-    glVertex3d(v.x, v.y, 0.0);
+	glTexCoord2d(0.0, 0.0);
+	v = center + vec2d(-img->size().width / 2.0, img->size().height / 2.0).rotate(rad);
+	glVertex3d(v.x, v.y, 0.0);
 
-    glEnd();
-    glDisable(GL_TEXTURE_2D);
-    glEnd();
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+	glEnd();
 }
 
 void TexImage::resize(double a)
 {
-    cv::Mat *tmp = new cv::Mat();
-    cv::resize(*img, *tmp, cv::Size(), a, a);
-    delete img;
-    img = tmp;
+	cv::Mat *tmp = new cv::Mat();
+	cv::resize(*img, *tmp, cv::Size(), a, a);
+	delete img;
+	img = tmp;
 }
