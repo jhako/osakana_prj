@@ -4,11 +4,15 @@
 
 #include <vector>
 #include <map>
+#include <memory>
 
 //--プロトタイプ宣言--
 class Fish;
 class Shark;
 class Target;
+class MyShader;
+class TexImage;
+class MyShader;
 
 
 //--魚等の管理クラス--
@@ -26,8 +30,21 @@ class World
 	//魚が集まる場所
 	std::vector<Target*> targets;
 
+	//水面を表現する頂点データ（z値）
+	std::vector<std::vector<double>>		surf_vertex_z[3];
+
+	//シェーダ
+	std::unique_ptr<MyShader>	fresnel_shader;
+
+	//キューブマッピング用テクスチャ
+	int		cube_tex;
+
+	//バッファ記録用
+	unsigned char*	buffer_data;
+	int				buf_tex;
+
 public:
-	World();
+	World(int w, int h);
 	~World();
 
 	void update();
