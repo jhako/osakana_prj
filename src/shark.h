@@ -1,7 +1,6 @@
 ﻿
 #include "fish.h"
 #include "vec2d.h"
-#include "fish.h"
 
 class World;
 
