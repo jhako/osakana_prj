@@ -4,6 +4,7 @@
 * OpenGL
 * GLUT
 * OpenCV 3.0
+* GLEW
 
 ##ビルドの方法
 1. CMakeを導入
