@@ -30,3 +30,8 @@
 # Build Directory
 /build/*
 !/build/*.png
+!/build/*.fs
+!/build/*.vs
+
+# For OSX
+.DS_Store

@@ -34,8 +34,13 @@ else ()
 endif ()
 
 find_package(OpenCV REQUIRED)
+find_package(GLEW REQUIRED)
 
-include_directories(${OPENGL_INCLUDE_DIR} ${GLUT_INCLUDE_DIR})
+include_directories(
+	${OPENGL_INCLUDE_DIR}
+	${GLUT_INCLUDE_DIR}
+	${GLEW_INCLUDE_DIRS}
+)
 
 add_executable (osakana_prj
 	src/main.cpp
@@ -45,6 +50,7 @@ add_executable (osakana_prj
 	src/world.cpp
 	src/teximage.cpp
 	src/target.cpp
+	src/shader.cpp
 )
 
 
@@ -52,6 +58,7 @@ target_link_libraries(osakana_prj
 	${GLUT_LIBRARIES}
 	${OPENGL_LIBRARY}
 	${OpenCV_LIBS}
+	${GLEW_LIBRARIES}
 )
 
 target_compile_features(osakana_prj PRIVATE cxx_range_for)
