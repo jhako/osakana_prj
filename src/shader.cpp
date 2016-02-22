@@ -93,7 +93,7 @@ int MyShader::load_and_compile(GLuint shader, const char * name)
 	fread(buf, 1, size, fp);
 
 	/* シェーダオブジェクトにプログラムをセット */
-	glShaderSource(shader, 1, (GLchar **)&buf, &size);
+	glShaderSource(shader, 1, (const GLchar **)&buf, &size);
 
 	/* シェーダ読み込み領域の解放 */
 	free(buf);
