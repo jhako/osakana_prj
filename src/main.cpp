@@ -3,6 +3,8 @@
 #include <time.h>
 #include <GL/glew.h>
 #include <GL/glut.h>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
 #include <chrono>
 #include <thread>
 #include "world.h"
@@ -11,9 +13,12 @@
 //Worldの実体（updateとdisplayで使うためグローバル）
 World* p_world;
 
+//FPS（フレーム更新数）
 const int FPS_micro = 1000000.0 / 60; //60 FPS
 std::chrono::time_point<std::chrono::system_clock> last_time;
 
+//OpenCV用
+cv::VideoCapture cap(0);
 
 static void display()
 {
@@ -65,6 +70,11 @@ static void update()
 	}
 
 	last_time = current_time;
+
+	//カメラデータの取得
+	cv::Mat frame;
+	cap >> frame;
+	cv::imshow("Capture", frame);
 
 }
 
@@ -147,6 +157,15 @@ int main(int argc, char *argv[])
 	}
 
 	p_world = new World(w, h);
+
+
+	//--OpenCVの設定--
+	//カメラの設定
+	cap.set(CV_CAP_PROP_FRAME_WIDTH, 640);
+	cap.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
+	if(!cap.isOpened()) return -1;
+	//ウィンドウの作成
+	cv::namedWindow("Capture", CV_WINDOW_AUTOSIZE | CV_WINDOW_FREERATIO);
 
 	//メインループの実行
 	glutMainLoop();
