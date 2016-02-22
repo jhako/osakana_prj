@@ -65,13 +65,12 @@ int MyShader::load_shader(const char * vtxShdName, const char * frgShdName)
 
 int MyShader::load_and_compile(GLuint shader, const char * name)
 {
-	int err;
 	FILE *fp;
 	void *buf;
 	int size;
 	GLint compiled;
 
-	if((err = fopen_s(&fp, name, "rb")) != 0)
+	if((fp = fopen(name, "rb")) == NULL)
 	{
 		fprintf(stderr, "%s is not found!!\n", name);
 		return -1;
