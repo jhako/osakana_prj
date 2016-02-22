@@ -51,6 +51,7 @@ add_executable (osakana_prj
 	src/teximage.cpp
 	src/target.cpp
 	src/shader.cpp
+	src/vision.cpp
 )
 
 
