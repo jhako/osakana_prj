@@ -8,6 +8,7 @@ varying vec3 vPosW;
 //varying vec3 vNrmW;
 //varying vec3 ePosW;
 
+
 //uniform vec3 eyePosition;
  
 void main(void)
