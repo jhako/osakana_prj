@@ -1,4 +1,4 @@
-﻿
+﻿#include <iostream>
 #include <stdlib.h>
 #include <time.h>
 #include <GL/glew.h>
@@ -8,7 +8,7 @@
 #include <chrono>
 #include <thread>
 #include "world.h"
-
+#include "vision.h"
 
 //Worldの実体（updateとdisplayで使うためグローバル）
 World* p_world;
@@ -73,8 +73,18 @@ static void update()
 
 	//カメラデータの取得
 	cv::Mat frame;
+	cv::Mat dst;
 	cap >> frame;
-	cv::imshow("Capture", frame);
+	int hue_min = cv::getTrackbarPos("Hue min", "Capture");
+	int hue_max = cv::getTrackbarPos("Hue max", "Capture");
+	int satulation_min = cv::getTrackbarPos("Satulation min", "Capture");
+	int satulation_max = cv::getTrackbarPos("Satulation max", "Capture");
+	int value_min = cv::getTrackbarPos("Value min", "Capture");
+	int value_max = cv::getTrackbarPos("Value max", "Capture");
+
+	colorExtraction(&frame, &dst, CV_BGR2HSV, hue_min, hue_max, satulation_min, satulation_max, value_min, value_max); //色抽出
+	cv::imshow("Capture", dst);
+	cv::waitKey(10);
 
 }
 
@@ -166,7 +176,13 @@ int main(int argc, char *argv[])
 	if(!cap.isOpened()) return -1;
 	//ウィンドウの作成
 	cv::namedWindow("Capture", CV_WINDOW_AUTOSIZE | CV_WINDOW_FREERATIO);
-
+	int slider_value = 50;
+	cv::createTrackbar("Hue min", "Capture", &slider_value, 180);
+	cv::createTrackbar("Hue max", "Capture", &slider_value, 180);
+	cv::createTrackbar("Satulation min", "Capture", &slider_value, 180);
+	cv::createTrackbar("Satulation max", "Capture", &slider_value, 180);
+	cv::createTrackbar("Value min", "Capture", &slider_value, 180);
+	cv::createTrackbar("Value max", "Capture", &slider_value, 180);
 	//メインループの実行
 	glutMainLoop();
 
