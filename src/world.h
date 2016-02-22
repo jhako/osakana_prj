@@ -5,6 +5,8 @@
 #include <vector>
 #include <map>
 #include <memory>
+#include <GL/glut.h>
+#include "vec2d.h"
 
 //--プロトタイプ宣言--
 class Fish;
@@ -34,14 +36,27 @@ class World
 	std::vector<std::vector<double>>		surf_vertex_z[3];
 
 	//シェーダ
-	std::unique_ptr<MyShader>	fresnel_shader;
+	std::unique_ptr<MyShader>	water_shader;
+	std::unique_ptr<MyShader>	caustics_shader;
 
 	//キューブマッピング用テクスチャ
-	int		cube_tex;
-
+	GLuint		cube_tex;
+	//フレームバッファ
+	GLuint		frame_buf;
 	//バッファ記録用
-	unsigned char*	buffer_data;
-	int				buf_tex;
+	std::vector<unsigned char>	buffer_data;
+	//unsigned char*	buffer_data;
+	GLuint		buf_tex;
+	//法線マップ
+	std::vector<unsigned char>	normal_data;
+	GLuint		normal_map;
+	//コースティクスマップ
+//	std::vector<unsigned char>	caustics_data;
+	GLuint	caustics_map;
+
+	//マウス用
+	vec2d	mouse_pos;
+	bool	mouse_state = false; //押されているかどうか
 
 public:
 	World(int w, int h);
@@ -50,6 +65,8 @@ public:
 	void update();
 	void render();
 
+	void draw_water_surface();
+
 	//アクセサ
 	std::vector<Shark*>& get_sharks(){ return sharks; }
 	std::vector<Target*>& get_targets(){ return targets; }
@@ -57,6 +74,8 @@ public:
 	std::vector<Fish*> get_neighborfishes(int idx);
 	int get_width(){ return width; }
 	int get_height(){ return height; }
+	void	set_mouse_pos(vec2d mp){ mouse_pos = mp; }
+	void	set_mouse_state(bool ms){ mouse_state = ms; }
 };
 
 

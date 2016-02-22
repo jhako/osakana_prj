@@ -30,6 +30,24 @@ static void keyboard(unsigned char key, int x, int y)
 	}
 }
 
+void mouse(int button, int state, int x, int y)
+{
+	p_world->set_mouse_pos(vec2d(x, y));
+	if(button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
+	{
+		p_world->set_mouse_state(true);
+	}
+	else
+	{
+		p_world->set_mouse_state(false);
+	}
+}
+
+void motion(int x, int y)
+{
+	p_world->set_mouse_pos(vec2d(x, y));
+}
+
 static void update()
 {
 	p_world->update();
@@ -67,7 +85,7 @@ int main(int argc, char *argv[])
 	glutCreateWindow("osakana_prj");
 	//
 	glEnable(GL_DEPTH_TEST);
-
+/*
 // /* -- 3D --
 	//射影行列を設定
 	glMatrixMode(GL_PROJECTION);
@@ -82,7 +100,7 @@ int main(int argc, char *argv[])
 		0.0, 0.0, 1.0);  //視界の上方向のベクトルx,y,z
 // */
 
- /* -- 2D --
+/* -- 2D --
 	//射影行列を設定
 	glMatrixMode(GL_PROJECTION);
 	//単位行列に初期化
@@ -91,12 +109,14 @@ int main(int argc, char *argv[])
 	glOrtho(0.0, w, h, 0.0, -1.0, 1.0);
 	//ビューポート変換
 	glViewport(0, 0, w, h);
- */
+*/
 	//クリアカラーの設定（水色）
 	glClearColor(240.0 / 255, 248.0 / 255, 1.0, 0);
 	//各コールバック関数の設定
 	glutDisplayFunc(display);
 	glutKeyboardFunc(keyboard);
+	glutMouseFunc(mouse);
+	glutMotionFunc(motion); //マウス移動
 	glutIdleFunc(update);
 	//αテストの判定値
 	glAlphaFunc(GL_GEQUAL, 0.5);
