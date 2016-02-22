@@ -65,7 +65,7 @@ int MyShader::load_shader(const char * vtxShdName, const char * frgShdName)
 
 int MyShader::load_and_compile(GLuint shader, const char * name)
 {
-	errno_t err;
+	int err;
 	FILE *fp;
 	void *buf;
 	int size;
