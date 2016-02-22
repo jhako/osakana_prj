@@ -87,7 +87,7 @@ World::World(int w, int h) : width(w), height(h)
 			surf_vertex_z[i][j].resize(SURF_RESOLUTION_Y + 2, 20.0);
 		}
 	}
-	
+
 	//初期条件（テスト）
 	int px = SURF_RESOLUTION_X / 4;
 	int py = SURF_RESOLUTION_Y / 4;
@@ -102,6 +102,7 @@ World::World(int w, int h) : width(w), height(h)
 			}
 		}
 	}
+
 	//2ステップ分計算
 	constexpr double dt = 0.016;
 	constexpr double c = 10;
@@ -125,7 +126,8 @@ World::World(int w, int h) : width(w), height(h)
 	}
 
 	//シェーダの作成
-	fresnel_shader = std::unique_ptr<MyShader>(new MyShader("simple.vs", "simple.fs"));
+	water_shader = std::unique_ptr<MyShader>(new MyShader("water.vs", "water.fs"));
+	caustics_shader = std::unique_ptr<MyShader>(new MyShader("caustics.vs", "caustics.fs"));
 
 	//キューブマッピング
 	glActiveTexture(GL_TEXTURE1);
@@ -147,14 +149,42 @@ World::World(int w, int h) : width(w), height(h)
 	}
 	glActiveTexture(GL_TEXTURE0);
 
-	//バッファ
-	buffer_data = new unsigned char[width * height * 4];
-
+	//バッファテクスチャの割り当て
+	buffer_data.resize(width * height * 4, 128);
+	//buffer_data = new unsigned char[width * height * 4];
 	glActiveTexture(GL_TEXTURE2);
+	glGenTextures(1, &buf_tex);
 	glBindTexture(GL_TEXTURE_2D, buf_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, &buffer_data[0]);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glBindTexture(GL_TEXTURE_2D, 0);
 	glActiveTexture(GL_TEXTURE0);
+
+	//法線マップの割り当て
+	normal_data.resize(SURF_RESOLUTION_X * SURF_RESOLUTION_Y * 4, 200);
+	glActiveTexture(GL_TEXTURE3);
+	glGenTextures(1, &normal_map);
+	glBindTexture(GL_TEXTURE_2D, normal_map);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SURF_RESOLUTION_X, SURF_RESOLUTION_Y, 0, GL_RGBA, GL_UNSIGNED_BYTE, &normal_data[0]);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glActiveTexture(GL_TEXTURE0);
+
+	//コースティクスマップの割り当て
+	glGenTextures(1, &caustics_map);
+	glBindTexture(GL_TEXTURE_2D, caustics_map);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	//フレームバッファの割り当て
+	glGenFramebuffersEXT(1, &frame_buf);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, frame_buf);
+	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, caustics_map, 0);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
 	bottom_img.load("bottom.png");
 
@@ -181,7 +211,7 @@ World::~World()
 		targets.pop_back();
 	}
 
-	delete buffer_data;
+//	delete buffer_data;
 }
 
 void World::update()
@@ -254,6 +284,41 @@ void World::update()
 			surf_vertex_z[2][nx][ny] += -h*(surf_vertex_z[1][nx][ny] - surf_vertex_z[0][nx][ny])*dt;
 		}
 	}
+
+	//---マウス操作による波の作成---
+	//行列を取得（モデルビュー／射影）
+	GLdouble mvM[16], prM[16];
+	GLint vpM[4];
+	glGetDoublev(GL_MODELVIEW_MATRIX, mvM);
+	glGetDoublev(GL_PROJECTION_MATRIX, prM);
+	glGetIntegerv(GL_VIEWPORT, vpM);
+	double mx = mouse_pos.x;
+	double my = mouse_pos.y;
+	vec3d np, fp;
+	//near面上の座標
+	gluUnProject(mx, height - my, 0, mvM, prM, vpM, &np.x, &np.y, &np.z);
+	gluUnProject(mx, height - my, 1, mvM, prM, vpM, &fp.x, &fp.y, &fp.z);
+	double st_depth = 20.0;
+	vec3d point = np + (fp - np) * (st_depth - np.z) / (fp.z - np.z);
+	//山波を作る
+	if(mouse_state == true)
+	{
+		int px = point.x / dx + 1;
+		int py = point.y / dy + 1;
+		auto f_max = [](int a, int b){ return a > b ? a : b; };
+		auto f_min = [](int a, int b){ return a < b ? a : b; };
+		constexpr int N = 2;
+		for(int i = f_max(1, px - N); i <= f_min(SURF_RESOLUTION_X, px + N); ++i)
+		{
+			for(int j = f_max(1, py - N); j <= f_min(SURF_RESOLUTION_Y, py + N); ++j)
+			{
+//				surf_vertex_z[0][i][j] = 20 + 10.0 * sin(3.141592 / (2 * N));
+//				surf_vertex_z[1][i][j] = 20 + 10.0 * sin(3.141592 / (2 * N));
+				surf_vertex_z[2][i][j] = 20 + 10.0 * sin(3.141592 / (2 * N));
+			}
+		}
+	}
+	//---
 }
 
 
@@ -265,11 +330,10 @@ void World::render()
 	// 2D視点
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	gluPerspective(90.0, (double)width / height, 0.1, 1000.0);
+	glOrtho(0.0, width, 0, height, -1000, 1000);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glViewport(0, 0, width, height);
-	gluLookAt(width / 2.0, height / 2.0, height / 2.0, width / 2.0, height / 2.0, 0.0, 0.0, 1.0, 0.0);
 
 	glDisable(GL_DEPTH_TEST);
 	glEnable(GL_ALPHA_TEST);
@@ -295,10 +359,30 @@ void World::render()
 	glEnable(GL_DEPTH_TEST);
 
 	// バッファデータを記録（シェーダに送信する）
-	glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer_data);
+	glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &buffer_data[0]);
+//	glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer_data);
 
 	glClearColor(0.5, 0.5, 0.5, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	//ライティングの設定
+	GLfloat light_position0[] = {10, 10, 100, 0};
+	glLightfv(GL_LIGHT0, GL_POSITION, light_position0);
+	glEnable(GL_LIGHT0); //光源0を利用
+	glEnable(GL_LIGHTING);
+
+	//コースティクスマップの描画
+	glUseProgram(caustics_shader->get_prog());
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, frame_buf);
+	const auto fbufs = std::vector<GLenum>{
+		GL_COLOR_ATTACHMENT0_EXT
+	};
+	glDrawBuffers(fbufs.size(), &fbufs[0]);
+	draw_water_surface();
+	glFlush();
+	glDrawBuffer(GL_FRONT);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+	glUseProgram(0);
 
 
 	#define ON_2D //2D視点にするか否か
@@ -317,7 +401,7 @@ void World::render()
 	static double time = 0.0;
 	//		eye[0] = 320 + 320 * cos(time);
 	//		eye[1] = 320 + 320 * sin(time);
-			eye[2] = 250 + 200 * sin(time);
+	//		eye[2] = 250 + 200 * sin(time);
 	time += 0.01;
 	//--視点を3Dに---
 	glViewport(0, 0, width, height);
@@ -337,80 +421,54 @@ void World::render()
 #endif
 	//---------------
 
-	//テクスチャデータの送信
-	glActiveTexture(GL_TEXTURE2);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer_data);
-	glBindTexture(GL_TEXTURE_2D, buf_tex);
+	//シェーダの設定
+	glUseProgram(water_shader->get_prog());
+	glUniform1i(glGetUniformLocation(water_shader->get_prog(), "envmap"), 1);
+	//	glUniform3f(glGetUniformLocation(water_shader->get_prog(), "eyePosition"), eye[0], eye[1], eye[2]);
 
-	//陰影のON
-	GLfloat light_position0[] = {10, 10, 100, 0};
-	glLightfv(GL_LIGHT0, GL_POSITION, light_position0);
-	glEnable(GL_LIGHTING);
-	glEnable(GL_LIGHT0); //光源0を利用
+	//バッファテクスチャデータの送信
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, buf_tex);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &buffer_data[0]);
+	glUniform1i(glGetUniformLocation(water_shader->get_prog(), "buf_tex"), 2);
+
+	//ノーマルマップデータの送信
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, normal_map);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, SURF_RESOLUTION_X, SURF_RESOLUTION_Y, GL_RGBA, GL_UNSIGNED_BYTE, &normal_data[0]);
+	glUniform1i(glGetUniformLocation(water_shader->get_prog(), "nrm_map"), 3);
+
+	//こースティックマップデータの送信
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, caustics_map);
+	glUniform1i(glGetUniformLocation(water_shader->get_prog(), "cau_map"), 4);
 
 	//質感の設定
 	GLfloat tcolor[4] = {1.0, 1.0, 1.0, 0.1}, scolor[4] = {1.0, 1.0, 1.0, 1.0};
 	glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, tcolor);
 	glMaterialfv(GL_FRONT, GL_SPECULAR, scolor);
 	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 64);
+/*
+	//陰影のON
+	//ライティングの設定
+	glLightfv(GL_LIGHT0, GL_POSITION, light_position0);
+	glEnable(GL_LIGHT0); //光源0を利用
+	glEnable(GL_LIGHTING);
 
 	//αブレンド
 	glEnable(GL_BLEND);
 	glDepthMask(GL_FALSE);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	glUseProgram(fresnel_shader->get_prog());
-	glUniform1i(glGetUniformLocation(fresnel_shader->get_prog(), "envmap"), 1);
-//	glUniform3f(glGetUniformLocation(fresnel_shader->get_prog(), "eyePosition"), eye[0], eye[1], eye[2]);
-	glUniform1i(glGetUniformLocation(fresnel_shader->get_prog(), "tex"), 2);
+*/
 
 	glActiveTexture(GL_TEXTURE0);
 
-	const double dx = (double)width / (SURF_RESOLUTION_X - 1);
-	const double dy = (double)height / (SURF_RESOLUTION_Y - 1);
-	glBegin(GL_QUADS);
-	for(int nx = 0; nx < SURF_RESOLUTION_X - 1; ++nx)
-	{
-		for(int ny = 0; ny < SURF_RESOLUTION_Y - 1; ++ny)
-		{
-			double x = nx * dx;
-			double y = ny * dy;
-			//法線ベクトルの設定
-			auto set_norm = [&](int ix, int iy) {
-				vec3d norm = cross_vec3d(
-					vec3d(2 * dx, 2 * dy, surf_vertex_z[2][ix + 1][iy + 1] - surf_vertex_z[2][ix - 1][iy - 1]),
-					vec3d(2 * dx, - 2 * dy, surf_vertex_z[2][ix + 1][iy - 1] - surf_vertex_z[2][ix - 1][iy + 1])).norm();
-				glNormal3d(norm.x, norm.y, norm.z);
-//				vec3d norm = cross_vec3d(
-//					vec3d(1.0, 0.0, (surf_vertex_z[2][ix + 1][iy] - surf_vertex_z[2][ix - 1][iy]) / (2 * dx)),
-//					vec3d(0.0, 1.0, (surf_vertex_z[2][ix][iy + 1] - surf_vertex_z[2][ix][iy - 1]) / (2 * dy))).norm();
-//				glNormal3d(-norm.x, -norm.y, -norm.z);
-			};
-
-			// 法線＋テクスチャ＋頂点座標の設定
-			// （x,yインデックスは1つずつずれて頂点位置に対応）
-			set_norm(nx + 1, ny + 1);
-			glTexCoord2d(x / width, y / height);
-			glVertex3d(x, y, surf_vertex_z[2][nx + 1][ny + 1]);
-
-			set_norm(nx + 2, ny + 1);
-			glTexCoord2d((x + dx) / width, y / height);
-			glVertex3d(x + dx, y, surf_vertex_z[2][nx + 2][ny + 1]);
-
-			set_norm(nx + 2, ny + 2);
-			glTexCoord2d((x + dx) / width, (y + dy) / height);
-			glVertex3d(x + dx , y + dy, surf_vertex_z[2][nx + 2][ny + 2]);
-
-			set_norm(nx + 1, ny + 2);
-			glTexCoord2d(x / width, (y + dy) / height);
-			glVertex3d(x, y + dy, surf_vertex_z[2][nx + 1][ny + 2]);
-		}
-	}
-	glEnd();
-
+	draw_water_surface();
+/*
 	glDepthMask(GL_TRUE);
 	glDisable(GL_BLEND);
-
+*/
 /*
 	// テクスチャマッピング開始
 	glActiveTexture(GL_TEXTURE1);
@@ -453,10 +511,85 @@ void World::render()
 	
 	glDisable(GL_LIGHTING);
 	glDisable(GL_LIGHT0);
-
+/*
+	glBindTexture(GL_TEXTURE_2D, caustics_map);
+	glEnable(GL_TEXTURE_2D);
+	glNormal3d(0.0, 0.0, 1.0);
+	glBegin(GL_QUADS);
+	glTexCoord2d(0.0, 1.0);
+	glVertex3d(320, 0, 0.0);
+	glTexCoord2d(1.0, 1.0);
+	glVertex3d(640, 0, 0.0);
+	glTexCoord2d(1.0, 0.0);
+	glVertex3d(640, 320, 0.0);
+	glTexCoord2d(0.0, 0.0);
+	glVertex3d(320, 320, 0.0);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, 0);
+*/
 	targets[0]->render(this);
 
 	glutSwapBuffers();
+}
+
+void World::draw_water_surface()
+{
+	const double dx = (double)width / (SURF_RESOLUTION_X - 1);
+	const double dy = (double)height / (SURF_RESOLUTION_Y - 1);
+	glBegin(GL_QUADS);
+	for(int nx = 0; nx < SURF_RESOLUTION_X - 1; ++nx)
+	{
+		for(int ny = 0; ny < SURF_RESOLUTION_Y - 1; ++ny)
+		{
+			double x = nx * dx;
+			double y = ny * dy;
+			//法線ベクトルの設定
+			vec3d norm;
+			auto set_norm = [&](int ix, int iy) {
+				norm = cross_vec3d(
+					vec3d(2 * dx, 2 * dy, surf_vertex_z[2][ix + 1][iy + 1] - surf_vertex_z[2][ix - 1][iy - 1]),
+					vec3d(2 * dx, -2 * dy, surf_vertex_z[2][ix + 1][iy - 1] - surf_vertex_z[2][ix - 1][iy + 1])).norm();
+				glNormal3d(norm.x, norm.y, norm.z);
+				//				vec3d norm = cross_vec3d(
+				//					vec3d(1.0, 0.0, (surf_vertex_z[2][ix + 1][iy] - surf_vertex_z[2][ix - 1][iy]) / (2 * dx)),
+				//					vec3d(0.0, 1.0, (surf_vertex_z[2][ix][iy + 1] - surf_vertex_z[2][ix][iy - 1]) / (2 * dy))).norm();
+				//				glNormal3d(-norm.x, -norm.y, -norm.z);
+			};
+
+			//法線マップの適用
+			auto set_nmap = [&](int ix, int iy)
+			{
+				normal_data[ix * 4 + iy * SURF_RESOLUTION_X * 4 + 0] = norm.x * 127 + 127;
+				normal_data[ix * 4 + iy * SURF_RESOLUTION_X * 4 + 1] = norm.y * 127 + 127;
+				normal_data[ix * 4 + iy * SURF_RESOLUTION_X * 4 + 2] = norm.z * 127 + 127;
+				normal_data[ix * 4 + iy * SURF_RESOLUTION_X * 4 + 3] = 255;
+			};
+
+			// 法線＋テクスチャ＋頂点座標の設定
+			// （x,yインデックスは1つずつずれて頂点位置に対応）
+			set_norm(nx + 1, ny + 1);
+			set_nmap(nx, ny);
+			glTexCoord2d(x / width, y / height);
+			glVertex3d(x, y, surf_vertex_z[2][nx + 1][ny + 1]);
+
+			set_norm(nx + 2, ny + 1);
+			set_nmap(nx + 1, ny);
+			glTexCoord2d((x + dx) / width, y / height);
+			glVertex3d(x + dx, y, surf_vertex_z[2][nx + 2][ny + 1]);
+
+			set_norm(nx + 2, ny + 2);
+			set_nmap(nx + 1, ny + 1);
+			glTexCoord2d((x + dx) / width, (y + dy) / height);
+			glVertex3d(x + dx, y + dy, surf_vertex_z[2][nx + 2][ny + 2]);
+
+			set_norm(nx + 1, ny + 2);
+			set_nmap(nx, ny + 1);
+			glTexCoord2d(x / width, (y + dy) / height);
+			glVertex3d(x, y + dy, surf_vertex_z[2][nx + 1][ny + 2]);
+		}
+	}
+	glEnd();
 }
 
 

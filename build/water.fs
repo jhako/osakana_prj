@@ -15,9 +15,13 @@ varying vec3 vPosW;
 // GLから設定される定数(uniform)
 const float etaRatio = 1.0 / 1.333; //air->water
 //const float etaRatio = 1.333; //water->air
-const float x_scale = 1.0/640.0;
-const float y_scale = 1.0/640.0;
-uniform sampler2D tex;
+const float x_scale = 1.0/640.0; //should be uniform
+const float y_scale = 1.0/640.0; //should be uniform
+const float nrm_x_scl = 1.0/100.0; //should be uniform
+const float nrm_y_scl = 1.0/100.0; //should	be uniform
+uniform sampler2D buf_tex;
+uniform sampler2D nrm_map;
+uniform sampler2D cau_map;
 
 void main(void)
 {
@@ -101,23 +105,52 @@ void main(void)
     vec4 refracColor = vec4(0.5, 0.5, 0.5, 1);
 	vec2 coord = vec2(gl_TexCoord[0].x + T.x * vPosW.z / T.z * x_scale,
 					  gl_TexCoord[0].y + T.y * vPosW.z / T.z * y_scale);
-	refracColor = texture2D(tex, coord);
+	refracColor = texture2D(buf_tex, coord);
     refracColor.a = 1.0;
 
+/*
 	// コースティクス（集光効果） -> 太陽の向きほど明るいで近似
 	float cD = dot(N, IL);
 	float caustics = 0.05 * pow(cD, 10) + 0.1 * pow(cD, 20) + 0.1 * pow(cD, 50) + 0.5 * pow(cD, 100);
-	float rC = 0.3; //ファクター
-	refracColor = refracColor * (0.9) + vec4(1.0, 1.0, 1.0, 1.0) * caustics * rC; //加算ブレンドのほうが自然？
-//	refracColor *= (0.9 + caustics * rC);
+*/
+
+/*
+	// コースティクスのまじめな計算
+	float caustics = 1.0;
+	const int CausticsSample = 3;
+	for(int i = 0; i < CausticsSample; ++i)
+	{
+		for(int j = 0; j < CausticsSample; ++j)
+		{
+//			vec2 ccrd = gl_TexCoord[0].xy + vec2((i-CausticsSample/2)*nrm_x_scl, (j-CausticsSample/2)*nrm_x_scl);
+//			vec3 xN = normalize(gl_NormalMatrix * (texture2D(nrm_map, ccrd).xyz * 2 - 1));
+			vec2 ccrd = gl_TexCoord[0].xy + vec2((i-CausticsSample/2)*x_scale, (j-CausticsSample/2)*y_scale);
+			vec3 xN = normalize(gl_NormalMatrix * (texture2D(cau_map, ccrd).xyz * 2 - 1));
+			float cD = max(dot(xN, IL), 0.0001);
+			caustics *= pow(cD, 0.05);
+		}
+	}
+	
+	float rC = 0.2; //ファクター
+//	refracColor = refracColor * (0.9) + vec4(1.0, 1.0, 1.0, 1.0) * caustics * rC; //加算ブレンドのほうが自然？
+	refracColor = refracColor * (0.4 + caustics * 0.6) + vec4(1.0, 1.0, 1.0, 1.0) * caustics * 0.2;
+*/	
+
+	//コースティクスマップを使ったコースティクス
+	vec4 cau_color = texture2D(cau_map, gl_TexCoord[0].xy);
+	//refracColor = refracColor * 0.8 + cau_color;
+	refracColor = refracColor * 0.8 + refracColor * cau_color.r * 1.2;
+
 
 	float loss = 0.0; //損失係数（いらない？）
 	vec4 color = Kr*reflecColor + (1.0-Kr)*refracColor*(1-loss);
 
 	//for debug
-	//vec4 color = vec4(1.0, 1.0, 1.0, 1.0) * caustics;
-	//vec4 color = vec4(IL, 1.0);
-	//vec4 color = vec4(vec3(pow(cD, 100), 0, 0), 1.0);
+	//color = vec4(1.0, 1.0, 1.0, 1.0) * caustics;
+	//color = vec4(IL, 1.0);
+	//color = vec4(vec3(pow(cD, 100), 0, 0), 1.0);
+	//color = texture2D(cau_map, gl_TexCoord[0].xy);
+	//color = vec4(1, 0, 0, 1) * caustics;
 
 //	vec4 color = Kr*reflecColor + (1.0-Kr)*refracColor;
 
