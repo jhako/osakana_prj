@@ -1,6 +1,7 @@
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 #include <opencv2/imgproc/imgproc.hpp>
+#include "vision.h"
 
 void colorExtraction(cv::Mat* src, cv::Mat* dst,
 		     int code,

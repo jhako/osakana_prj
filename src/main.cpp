@@ -1,4 +1,4 @@
-﻿
+﻿#include <iostream>
 #include <stdlib.h>
 #include <time.h>
 #include <GL/glew.h>
@@ -8,7 +8,7 @@
 #include <chrono>
 #include <thread>
 #include "world.h"
-
+#include "vision.h"
 
 //Worldの実体（updateとdisplayで使うためグローバル）
 World* p_world;
@@ -73,8 +73,11 @@ static void update()
 
 	//カメラデータの取得
 	cv::Mat frame;
+	cv::Mat dst;
 	cap >> frame;
-	cv::imshow("Capture", frame);
+	colorExtraction(&frame, &dst, CV_BGR2HSV, 150, 165, 100, 255, 70, 255); //色抽出
+	cv::imshow("Capture", dst);
+	cv::waitKey(10);
 
 }
 
@@ -166,7 +169,6 @@ int main(int argc, char *argv[])
 	if(!cap.isOpened()) return -1;
 	//ウィンドウの作成
 	cv::namedWindow("Capture", CV_WINDOW_AUTOSIZE | CV_WINDOW_FREERATIO);
-
 	//メインループの実行
 	glutMainLoop();
 
