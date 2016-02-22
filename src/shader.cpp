@@ -5,17 +5,16 @@
 #include <math.h>
 
 #include <GL/glew.h>
-#include <GL/wglew.h>
 #include <GL/glut.h>
 
 #include "shader.h"
 
-MyShader::MyShader(char * vtxShdName, char * frgShdName)
+MyShader::MyShader(const char * vtxShdName, const char * frgShdName)
 {
 	load_shader(vtxShdName, frgShdName);
 }
 
-int MyShader::load_shader(char * vtxShdName, char * frgShdName)
+int MyShader::load_shader(const char * vtxShdName, const char * frgShdName)
 {
 	GLuint vtxShader;
 	GLuint frgShader;
@@ -64,7 +63,7 @@ int MyShader::load_shader(char * vtxShdName, char * frgShdName)
 	return 0;
 }
 
-int MyShader::load_and_compile(GLuint shader, char * name)
+int MyShader::load_and_compile(GLuint shader, const char * name)
 {
 	errno_t err;
 	FILE *fp;
