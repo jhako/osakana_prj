@@ -45,13 +45,21 @@ include_directories(
 add_executable (osakana_prj
 	src/main.cpp
 	src/behavior.cpp
+	src/behavior.h
 	src/fish.cpp
+	src/fish.h
 	src/shark.cpp
+	src/shark.h
 	src/world.cpp
+	src/world.h
 	src/teximage.cpp
+	src/teximage.h
 	src/target.cpp
+	src/target.h
 	src/shader.cpp
+	src/shader.h
 	src/vision.cpp
+	src/vision.h
 )
 
 
