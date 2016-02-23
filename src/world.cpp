@@ -149,9 +149,8 @@ World::World(int w, int h) : width(w), height(h)
 	}
 	glActiveTexture(GL_TEXTURE0);
 
-	//バッファテクスチャの割り当て
+	//水中バッファテクスチャの割り当て
 	buffer_data.resize(width * height * 4, 128);
-	//buffer_data = new unsigned char[width * height * 4];
 	glActiveTexture(GL_TEXTURE2);
 	glGenTextures(1, &buf_tex);
 	glBindTexture(GL_TEXTURE_2D, buf_tex);
@@ -210,8 +209,6 @@ World::~World()
 		delete target;
 		targets.pop_back();
 	}
-
-//	delete buffer_data;
 }
 
 void World::update()
@@ -220,10 +217,9 @@ void World::update()
 	{
 		tar->update(this);
 	}
-	for (int i = 0; i < fishes.size(); ++i)
+	for (auto& fish : fishes)
 	{
 		//各fishがどこの領域に属するかを更新
-		Fish* fish = fishes.at(i);
 		vec2d pos = fish->get_pos();
 		int pre_idx = fish->get_pidx();
 		int idx = pos.x / (int)(width / PARTITION_X)
@@ -235,15 +231,15 @@ void World::update()
 			fish->set_pidx(idx);
 		}
 
-		fishes.at(i)->update(this);
+		fish->update(this);
 	}
-	for (int i = 0; i < sharks.size(); ++i)
+	for (auto& shark : sharks)
 	{
-		int idx = sharks.at(i)->get_pos().x / (int)(width / PARTITION_X)
-			+ (int)(sharks.at(i)->get_pos().y / (int)(height / PARTITION_Y))*PARTITION_X;
-		sharks.at(i)->set_pidx(idx);
+		int idx = shark->get_pos().x / (int)(width / PARTITION_X)
+			+ (int)(shark->get_pos().y / (int)(height / PARTITION_Y))*PARTITION_X;
+		shark->set_pidx(idx);
 
-		sharks.at(i)->update(this);
+		shark->update(this);
 	}
 
 	//波動方程式による計算
@@ -346,21 +342,20 @@ void World::render()
 	{
 		tar->render(this);
 	}
-	for(int i = 0; i < fishes.size(); ++i)
+	for(auto& fish : fishes)
 	{
-		fishes.at(i)->render(this);
+		fish->render(this);
 	}
-	for(int i = 0; i < sharks.size(); ++i)
+	for(auto& shark : sharks)
 	{
-		sharks.at(i)->render(this);
+		shark->render(this);
 	}
 
 	glDisable(GL_ALPHA_TEST);
 	glEnable(GL_DEPTH_TEST);
 
-	// バッファデータを記録（シェーダに送信する）
+	// 水中バッファデータを記録（シェーダに送信する）
 	glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &buffer_data[0]);
-//	glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer_data);
 
 	glClearColor(0.5, 0.5, 0.5, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -424,7 +419,6 @@ void World::render()
 	//シェーダの設定
 	glUseProgram(water_shader->get_prog());
 	glUniform1i(glGetUniformLocation(water_shader->get_prog(), "envmap"), 1);
-	//	glUniform3f(glGetUniformLocation(water_shader->get_prog(), "eyePosition"), eye[0], eye[1], eye[2]);
 
 	//バッファテクスチャデータの送信
 	glActiveTexture(GL_TEXTURE2);
@@ -459,7 +453,6 @@ void World::render()
 	glEnable(GL_BLEND);
 	glDepthMask(GL_FALSE);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
 */
 
 	glActiveTexture(GL_TEXTURE0);
@@ -511,24 +504,6 @@ void World::render()
 	
 	glDisable(GL_LIGHTING);
 	glDisable(GL_LIGHT0);
-/*
-	glBindTexture(GL_TEXTURE_2D, caustics_map);
-	glEnable(GL_TEXTURE_2D);
-	glNormal3d(0.0, 0.0, 1.0);
-	glBegin(GL_QUADS);
-	glTexCoord2d(0.0, 1.0);
-	glVertex3d(320, 0, 0.0);
-	glTexCoord2d(1.0, 1.0);
-	glVertex3d(640, 0, 0.0);
-	glTexCoord2d(1.0, 0.0);
-	glVertex3d(640, 320, 0.0);
-	glTexCoord2d(0.0, 0.0);
-	glVertex3d(320, 320, 0.0);
-	glEnd();
-	glDisable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, 0);
-*/
-	targets[0]->render(this);
 
 	glutSwapBuffers();
 }
@@ -593,10 +568,10 @@ void World::draw_water_surface()
 }
 
 
-std::vector<Fish*> World::get_neighborfishes(int idx)
+std::list<Fish*> World::get_neighborfishes(int idx)
 {
 	//idxの領域の周辺８つの領域を含めて、属するfishを返す
-	std::vector<Fish*> nfishes;
+	std::list<Fish*> nfishes;
 	int x = idx%PARTITION_X;
 	int y = idx / PARTITION_X;
 	for (int i = x - 1; i <= x + 1; ++i)

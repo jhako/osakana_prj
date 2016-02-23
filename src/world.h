@@ -3,6 +3,7 @@
 #define WORLD_H
 
 #include <vector>
+#include <list>
 #include <map>
 #include <memory>
 #include <GL/glut.h>
@@ -24,13 +25,13 @@ class World
 	int width, height;
 
 	//魚を保管するvector
-	std::vector<Fish*> fishes;
-	std::vector<Shark*> sharks;
+	std::list<Fish*> fishes;
+	std::list<Shark*> sharks;
 	//領域の分割（動作負荷軽減のため）
 	std::vector< std::map<int, Fish*> >  partitons;
 
 	//魚が集まる場所
-	std::vector<Target*> targets;
+	std::list<Target*> targets;
 
 	//水面を表現する頂点データ（z値）
 	std::vector<std::vector<double>>		surf_vertex_z[3];
@@ -43,15 +44,13 @@ class World
 	GLuint		cube_tex;
 	//フレームバッファ
 	GLuint		frame_buf;
-	//バッファ記録用
+	//水中バッファ記録用
 	std::vector<unsigned char>	buffer_data;
-	//unsigned char*	buffer_data;
 	GLuint		buf_tex;
 	//法線マップ
 	std::vector<unsigned char>	normal_data;
 	GLuint		normal_map;
 	//コースティクスマップ
-//	std::vector<unsigned char>	caustics_data;
 	GLuint	caustics_map;
 
 	//マウス用
@@ -68,10 +67,10 @@ public:
 	void draw_water_surface();
 
 	//アクセサ
-	std::vector<Shark*>& get_sharks(){ return sharks; }
-	std::vector<Target*>& get_targets(){ return targets; }
+	std::list<Shark*>& get_sharks(){ return sharks; }
+	std::list<Target*>& get_targets(){ return targets; }
 	//分割された領域周辺にいるfishの配列を得る
-	std::vector<Fish*> get_neighborfishes(int idx);
+	std::list<Fish*> get_neighborfishes(int idx);
 	int get_width(){ return width; }
 	int get_height(){ return height; }
 	void	set_mouse_pos(vec2d mp){ mouse_pos = mp; }
