@@ -7,6 +7,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <chrono>
 #include <thread>
+#include <mutex>
 #include "world.h"
 #include "vision.h"
 
@@ -18,7 +19,14 @@ const int FPS_micro = 1000000.0 / 60; //60 FPS
 std::chrono::time_point<std::chrono::system_clock> last_time;
 
 //OpenCV用
-cv::VideoCapture cap(0);
+cv::VideoCapture cap(0); //キャプチャ
+cv::Mat cv_tex; //CVWindowに表示するテクスチャ
+
+//ミューテックス
+std::mutex mtx;
+
+//フラグ
+bool flag_exit = false;
 
 static void display()
 {
@@ -35,7 +43,7 @@ static void keyboard(unsigned char key, int x, int y)
 	}
 }
 
-void mouse(int button, int state, int x, int y)
+static void mouse(int button, int state, int x, int y)
 {
 	p_world->set_mouse_pos(vec2d(x, y));
 	if(button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
@@ -48,7 +56,7 @@ void mouse(int button, int state, int x, int y)
 	}
 }
 
-void motion(int x, int y)
+static void motion(int x, int y)
 {
 	p_world->set_mouse_pos(vec2d(x, y));
 }
@@ -64,28 +72,46 @@ static void update()
 
 	//指定したFPSにフレームレートを維持
 	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(current_time - last_time).count();
-	if (duration < FPS_micro)
+	if(duration < FPS_micro)
 	{
 		std::this_thread::sleep_for(std::chrono::microseconds(FPS_micro - duration));
 	}
 
 	last_time = current_time;
 
-	//カメラデータの取得
-	cv::Mat frame;
-	cv::Mat dst;
-	cap >> frame;
-	int hue_min = cv::getTrackbarPos("Hue min", "Capture");
-	int hue_max = cv::getTrackbarPos("Hue max", "Capture");
-	int satulation_min = cv::getTrackbarPos("Satulation min", "Capture");
-	int satulation_max = cv::getTrackbarPos("Satulation max", "Capture");
-	int value_min = cv::getTrackbarPos("Value min", "Capture");
-	int value_max = cv::getTrackbarPos("Value max", "Capture");
+}
 
-	colorExtraction(&frame, &dst, CV_BGR2HSV, hue_min, hue_max, satulation_min, satulation_max, value_min, value_max); //色抽出
-	cv::imshow("Capture", dst);
-	cv::waitKey(10);
+//認識部分を別スレッドで行う
+static void cv_update()
+{
+	//イベントループ
+	while(true)
+	{
+		//カメラデータの取得
+		cv::Mat frame;
+		cv::Mat dst;
+		cap >> frame;
+		int hue_min = cv::getTrackbarPos("Hue min", "Capture");
+		int hue_max = cv::getTrackbarPos("Hue max", "Capture");
+		int satulation_min = cv::getTrackbarPos("Satulation min", "Capture");
+		int satulation_max = cv::getTrackbarPos("Satulation max", "Capture");
+		int value_min = cv::getTrackbarPos("Value min", "Capture");
+		int value_max = cv::getTrackbarPos("Value max", "Capture");
 
+		colorExtraction(&frame, &dst, CV_BGR2HSV, hue_min, hue_max, satulation_min, satulation_max, value_min, value_max); //色抽出
+		cv_tex = std::move(dst);
+
+		cv::imshow("Capture", cv_tex);
+		cv::waitKey(10); //イベント処理
+
+		{
+			std::lock_guard<std::mutex> lock(mtx);
+			if(flag_exit)
+			{
+				break;
+			}
+		}
+	}
 }
 
 int main(int argc, char *argv[])
@@ -105,31 +131,6 @@ int main(int argc, char *argv[])
 	glutCreateWindow("osakana_prj");
 	//
 	glEnable(GL_DEPTH_TEST);
-/*
-// /* -- 3D --
-	//射影行列を設定
-	glMatrixMode(GL_PROJECTION);
-	//単位行列に初期化
-	glLoadIdentity();
-	//視界の設定
-	gluPerspective(60.0, (double)w / h, 0.1, 1000.0);
-	//視点
-	gluLookAt(
-		320.0, 0.0, 500.0, // 視点の位置x,y,z;
-		320.0, 320.0, 0.0,   // 視界の中心位置の参照点座標x,y,z
-		0.0, 0.0, 1.0);  //視界の上方向のベクトルx,y,z
-// */
-
-/* -- 2D --
-	//射影行列を設定
-	glMatrixMode(GL_PROJECTION);
-	//単位行列に初期化
-	glLoadIdentity();
-	//画面の座標をワールド座標に対応
-	glOrtho(0.0, w, h, 0.0, -1.0, 1.0);
-	//ビューポート変換
-	glViewport(0, 0, w, h);
-*/
 	//クリアカラーの設定（水色）
 	glClearColor(240.0 / 255, 248.0 / 255, 1.0, 0);
 	//各コールバック関数の設定
@@ -153,9 +154,9 @@ int main(int argc, char *argv[])
 	glShadeModel(GL_SMOOTH);
 	//両面表示
 	glEnable(GL_CULL_FACE);
-
+	//時間記録
 	last_time = std::chrono::system_clock::now();
-
+	//バージョン表示（デバッグ）
 	printf("version : %s\n", glGetString(GL_VERSION));
 
 	// GLEW初期化
@@ -183,8 +184,20 @@ int main(int argc, char *argv[])
 	cv::createTrackbar("Satulation max", "Capture", &slider_value, 180);
 	cv::createTrackbar("Value min", "Capture", &slider_value, 180);
 	cv::createTrackbar("Value max", "Capture", &slider_value, 180);
+
+	//別スレッドの起動
+	auto cv_thread = std::thread([]{ cv_update(); });
+
 	//メインループの実行
 	glutMainLoop();
+
+	//終了処理（ただしGLUTだと無意味）
+	{
+		std::lock_guard<std::mutex> lock(mtx);
+		flag_exit = true; //終了
+	}
+
+	cv_thread.join();
 
 	return 0;
 }
