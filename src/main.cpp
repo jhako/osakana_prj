@@ -1,13 +1,12 @@
-﻿#include <iostream>
+﻿
+#include <iostream>
 #include <stdlib.h>
-#include <time.h>
 #include <GL/glew.h>
 #include <GL/glut.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <chrono>
-#include <thread>
-#include <mutex>
+#include <future>
 #include "world.h"
 #include "vision.h"
 
@@ -19,8 +18,11 @@ const int FPS_micro = 1000000.0 / 60; //60 FPS
 std::chrono::time_point<std::chrono::system_clock> last_time;
 
 //OpenCV用
-cv::VideoCapture cap(0); //キャプチャ
-cv::Mat cv_tex; //CVWindowに表示するテクスチャ
+#define USE_CAPTURE
+#ifdef USE_CAPTURE
+	cv::VideoCapture cap(0); //キャプチャ
+	cv::Mat cv_tex; //CVWindowに表示するテクスチャ
+#endif
 
 //ミューテックス
 std::mutex mtx;
@@ -63,10 +65,34 @@ static void motion(int x, int y)
 
 static void update()
 {
-	p_world->update();
+	////for debug
+	//static int debug_step = 0; const int DCount = 10;
+	//static std::chrono::time_point<std::chrono::system_clock> start_t, end_t;
+	//if(debug_step == 0)
+	//	start_t = std::chrono::system_clock::now();
+
+	//Worldのアップデート（マルチタスクで実行）
+	auto fut_world = std::async([]{ p_world->update(); });
+//	p_world->update();
 
 	//更新のたびに再描画を行う
 	glutPostRedisplay();
+
+	//タスクの終了待機
+	fut_world.get();
+
+	//GL関連のアップデート
+	p_world->opengl_update();
+
+	////for debug
+	//if(debug_step == DCount)
+	//{
+	//	end_t = std::chrono::system_clock::now();
+	//	std::cout << "TS : " << std::chrono::duration_cast<std::chrono::milliseconds>(end_t - start_t).count() << "\n";
+	//	debug_step = 0;
+	//}
+	//else
+	//	++debug_step;
 
 	auto current_time = std::chrono::system_clock::now();
 
@@ -76,11 +102,10 @@ static void update()
 	{
 		std::this_thread::sleep_for(std::chrono::microseconds(FPS_micro - duration));
 	}
-
 	last_time = current_time;
-
 }
 
+#ifdef USE_CAPTURE
 //認識部分を別スレッドで行う
 static void cv_update()
 {
@@ -113,6 +138,8 @@ static void cv_update()
 		}
 	}
 }
+#endif
+
 
 int main(int argc, char *argv[])
 {
@@ -169,7 +196,7 @@ int main(int argc, char *argv[])
 
 	p_world = new World(w, h);
 
-
+#ifdef USE_CAPTURE
 	//--OpenCVの設定--
 	//カメラの設定
 	cap.set(CV_CAP_PROP_FRAME_WIDTH, 640);
@@ -185,8 +212,9 @@ int main(int argc, char *argv[])
 	cv::createTrackbar("Value min", "Capture", &slider_value, 180);
 	cv::createTrackbar("Value max", "Capture", &slider_value, 180);
 
-	//別スレッドの起動
-	auto cv_thread = std::thread([]{ cv_update(); });
+	//CVは非同期処理
+	auto fut_cv = std::async(std::launch::async, []{ cv_update(); });
+#endif
 
 	//メインループの実行
 	glutMainLoop();
@@ -196,8 +224,6 @@ int main(int argc, char *argv[])
 		std::lock_guard<std::mutex> lock(mtx);
 		flag_exit = true; //終了
 	}
-
-	cv_thread.join();
 
 	return 0;
 }

@@ -1,4 +1,4 @@
-
+ï»¿
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,34 +21,34 @@ int MyShader::load_shader(const char * vtxShdName, const char * frgShdName)
 	GLuint prog;
 	GLint linked;
 
-	/* ƒVƒF[ƒ_ƒIƒuƒWƒFƒNƒg‚Ìì¬ */
+	/* ã‚·ã‚§ãƒ¼ãƒ€ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®ä½œæˆ */
 	vtxShader = glCreateShader(GL_VERTEX_SHADER);
 	frgShader = glCreateShader(GL_FRAGMENT_SHADER);
 
-	/* ƒo[ƒeƒbƒNƒXƒVƒF[ƒ_‚Ìƒ[ƒh‚ÆƒRƒ“ƒpƒCƒ‹ */
+	/* ãƒãƒ¼ãƒ†ãƒƒã‚¯ã‚¹ã‚·ã‚§ãƒ¼ãƒ€ã®ãƒ­ãƒ¼ãƒ‰ã¨ã‚³ãƒ³ãƒ‘ã‚¤ãƒ« */
 	if(load_and_compile(vtxShader, vtxShdName) < 0)
 	{
 		return -1;
 	}
 
-	/* ƒtƒ‰ƒOƒƒ“ƒgƒVƒF[ƒ_‚Ìƒ[ƒh‚ÆƒRƒ“ƒpƒCƒ‹ */
+	/* ãƒ•ãƒ©ã‚°ãƒ¡ãƒ³ãƒˆã‚·ã‚§ãƒ¼ãƒ€ã®ãƒ­ãƒ¼ãƒ‰ã¨ã‚³ãƒ³ãƒ‘ã‚¤ãƒ« */
 	if(load_and_compile(frgShader, frgShdName) < 0)
 	{
 		return -1;
 	}
 
-	/* ƒvƒƒOƒ‰ƒ€ƒIƒuƒWƒFƒNƒg‚Ìì¬ */
+	/* ãƒ—ãƒ­ã‚°ãƒ©ãƒ ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®ä½œæˆ */
 	prog = glCreateProgram();
 
-	/* ƒVƒF[ƒ_ƒIƒuƒWƒFƒNƒg‚ÌƒVƒF[ƒ_ƒvƒƒOƒ‰ƒ€‚Ö‚Ì“o˜^ */
+	/* ã‚·ã‚§ãƒ¼ãƒ€ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®ã‚·ã‚§ãƒ¼ãƒ€ãƒ—ãƒ­ã‚°ãƒ©ãƒ ã¸ã®ç™»éŒ² */
 	glAttachShader(prog, vtxShader);
 	glAttachShader(prog, frgShader);
 
-	/* ƒVƒF[ƒ_ƒIƒuƒWƒFƒNƒg‚Ìíœ */
+	/* ã‚·ã‚§ãƒ¼ãƒ€ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®å‰Šé™¤ */
 	glDeleteShader(vtxShader);
 	glDeleteShader(frgShader);
 
-	/* ƒVƒF[ƒ_ƒvƒƒOƒ‰ƒ€‚ÌƒŠƒ“ƒN */
+	/* ã‚·ã‚§ãƒ¼ãƒ€ãƒ—ãƒ­ã‚°ãƒ©ãƒ ã®ãƒªãƒ³ã‚¯ */
 	glLinkProgram(prog);
 	glGetProgramiv(prog, GL_LINK_STATUS, &linked);
 	printProgramInfoLog(prog);
@@ -76,11 +76,11 @@ int MyShader::load_and_compile(GLuint shader, const char * name)
 		return -1;
 	}
 
-	/* ƒtƒ@ƒCƒ‹ƒTƒCƒY‚Ìæ“¾ */
+	/* ãƒ•ã‚¡ã‚¤ãƒ«ã‚µã‚¤ã‚ºã®å–å¾— */
 	fseek(fp, 0, SEEK_END);
 	size = ftell(fp);
 
-	/* ƒVƒF[ƒ_ƒvƒƒOƒ‰ƒ€‚Ì“Ç‚İ‚İ—Ìˆæ‚ğŠm•Û */
+	/* ã‚·ã‚§ãƒ¼ãƒ€ãƒ—ãƒ­ã‚°ãƒ©ãƒ ã®èª­ã¿è¾¼ã¿é ˜åŸŸã‚’ç¢ºä¿ */
 	if((buf = (void *)malloc(size)) == NULL)
 	{
 		fprintf(stderr, "Memory is not enough for %s\n", name);
@@ -88,21 +88,21 @@ int MyShader::load_and_compile(GLuint shader, const char * name)
 		return -1;
 	}
 
-	/* ƒtƒ@ƒCƒ‹‚ğæ“ª‚©‚ç“Ç‚İ‚Ş */
+	/* ãƒ•ã‚¡ã‚¤ãƒ«ã‚’å…ˆé ­ã‹ã‚‰èª­ã¿è¾¼ã‚€ */
 	fseek(fp, 0, SEEK_SET);
 	fread(buf, 1, size, fp);
 
-	/* ƒVƒF[ƒ_ƒIƒuƒWƒFƒNƒg‚ÉƒvƒƒOƒ‰ƒ€‚ğƒZƒbƒg */
+	/* ã‚·ã‚§ãƒ¼ãƒ€ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã«ãƒ—ãƒ­ã‚°ãƒ©ãƒ ã‚’ã‚»ãƒƒãƒˆ */
 	glShaderSource(shader, 1, (const GLchar **)&buf, &size);
 
-	/* ƒVƒF[ƒ_“Ç‚İ‚İ—Ìˆæ‚Ì‰ğ•ú */
+	/* ã‚·ã‚§ãƒ¼ãƒ€èª­ã¿è¾¼ã¿é ˜åŸŸã®è§£æ”¾ */
 	free(buf);
 	fclose(fp);
 
-	/* ƒVƒF[ƒ_‚ÌƒRƒ“ƒpƒCƒ‹ */
+	/* ã‚·ã‚§ãƒ¼ãƒ€ã®ã‚³ãƒ³ãƒ‘ã‚¤ãƒ« */
 	glCompileShader(shader);
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
-	printShaderInfoLog(shader);		/* ƒRƒ“ƒpƒCƒ‹ƒƒO‚Ìo—Í */
+	printShaderInfoLog(shader);		/* ã‚³ãƒ³ãƒ‘ã‚¤ãƒ«ãƒ­ã‚°ã®å‡ºåŠ› */
 	if(compiled == GL_FALSE)
 	{
 		fprintf(stderr, "Compile error in %s!!\n", name);
@@ -117,7 +117,7 @@ void MyShader::printProgramInfoLog(GLuint program)
 	int logSize;
 	int length;
 
-	/* ƒƒO‚Ì’·‚³‚ÍAÅŒã‚ÌNULL•¶š‚àŠÜ‚Ş */
+	/* ãƒ­ã‚°ã®é•·ã•ã¯ã€æœ€å¾Œã®NULLæ–‡å­—ã‚‚å«ã‚€ */
 	glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logSize);
 
 	if(logSize > 1)
@@ -134,7 +134,7 @@ void MyShader::printShaderInfoLog(GLuint shader)
 	int logSize;
 	int length;
 
-	/* ƒƒO‚Ì’·‚³‚ÍAÅŒã‚ÌNULL•¶š‚àŠÜ‚Ş */
+	/* ãƒ­ã‚°ã®é•·ã•ã¯ã€æœ€å¾Œã®NULLæ–‡å­—ã‚‚å«ã‚€ */
 	glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logSize);
 
 	if(logSize > 1)

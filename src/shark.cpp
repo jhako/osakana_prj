@@ -21,7 +21,7 @@ void Shark::update(World* p_world)
 {
 	//最近傍のfishを探す
 	Fish* nearest_fish = NULL;
-	std::list<Fish*> lfishes = p_world->get_neighborfishes(partidx);
+	auto lfishes = p_world->get_neighborfishes(partidx);
 	for (auto& lfish : lfishes)
 	{
 		double lsq = (pos - lfish->get_pos()).lengthsq();

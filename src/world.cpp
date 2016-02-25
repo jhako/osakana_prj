@@ -1,9 +1,13 @@
 ﻿
+
+
 //#include <opencv/cv.h>
 //#include <opencv/highgui.h>
 #include <opencv2/opencv.hpp>
 #include <GL/glew.h>
 #include <GL/glut.h>
+#include <chrono>
+#include <future>
 #include "world.h"
 #include "teximage.h"
 #include "fish.h"
@@ -11,6 +15,7 @@
 #include "target.h"
 #include "shader.h"
 #include "vec3d.h"
+#include "fish_loader.h"
 
 
 //X・Y方向にどれだけ分割するか
@@ -46,20 +51,19 @@ static TexImage bottom_img;
 
 World::World(int w, int h) : width(w), height(h)
 {
+	//メモリ確保
 	partitons.resize(PARTITION_X*PARTITION_Y);
+	fishes.reserve(500);
+	targets.reserve(50);
+
+	//fishの追加
 	for (int i = 0; i < 200; ++i)
 	{
 		//位置はランダム、初期速度はゼロ
 		Fish* fish = new Fish(vec2d(100 + (double)rand() / RAND_MAX * 400,
 			100 + (double)rand() / RAND_MAX * 400),
 			vec2d());
-		fishes.push_back(fish);
-
-		//どこの領域にいるかを計算・更新
-		int idx = fish->get_pos().x / (int)(width / PARTITION_X)
-			+ (int)(fish->get_pos().y / (int)(height / PARTITION_Y))*PARTITION_X;
-		partitons.at(idx).insert(std::make_pair(fish->get_id(), fish));
-		fish->set_pidx(idx);
+		add_fish_to_world(fish);
 	}
 
 	//三匹sharkを追加
@@ -160,17 +164,6 @@ World::World(int w, int h) : width(w), height(h)
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glActiveTexture(GL_TEXTURE0);
 
-	//法線マップの割り当て
-	normal_data.resize(SURF_RESOLUTION_X * SURF_RESOLUTION_Y * 4, 200);
-	glActiveTexture(GL_TEXTURE3);
-	glGenTextures(1, &normal_map);
-	glBindTexture(GL_TEXTURE_2D, normal_map);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SURF_RESOLUTION_X, SURF_RESOLUTION_Y, 0, GL_RGBA, GL_UNSIGNED_BYTE, &normal_data[0]);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glActiveTexture(GL_TEXTURE0);
-
 	//コースティクスマップの割り当て
 	glGenTextures(1, &caustics_map);
 	glBindTexture(GL_TEXTURE_2D, caustics_map);
@@ -185,7 +178,11 @@ World::World(int w, int h) : width(w), height(h)
 	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, caustics_map, 0);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
+	//海底イメージ
 	bottom_img.load("bottom.png");
+
+	//魚ローダー
+	fish_loader = std::make_unique<FishLoader>("newfish", this);
 
 }
 
@@ -213,74 +210,63 @@ World::~World()
 
 void World::update()
 {
-	for (auto& tar : targets)
+	//OPENGL関連の処理は禁止
+
+//	//for debug
+//	auto start_t = std::chrono::system_clock::now();
+
+	//ロード間隔
+	constexpr int FramesPerFishLoading = 300; //大体5秒
+	//タスク（並列あるいは遅延処理）
+	std::future<std::vector<Fish*>> fut_load;
+
+	//ロードするかのフラグ
+	bool if_load_fish = step % FramesPerFishLoading == 0;
+
+	if(if_load_fish)
 	{
-		tar->update(this);
+		//ロードタスクを設定
+		fut_load = std::async([&]{ return fish_loader->load_fish(); });
 	}
-	for (auto& fish : fishes)
+
+	//エンティティのアップデート
+//	update_entities();
+	auto fut_ue = std::async([&]{ update_entities(); });
+
+//水面サーフェスの計算
+	calc_water_surface();
+//	auto fut_cw = std::async([&]{ calc_water_surface(); }); //並列化
+
+
+	fut_ue.get();
+//	fut_cw.get();
+
+	if(if_load_fish)
 	{
-		//各fishがどこの領域に属するかを更新
-		vec2d pos = fish->get_pos();
-		int pre_idx = fish->get_pidx();
-		int idx = pos.x / (int)(width / PARTITION_X)
-			+ (int)(pos.y / (int)(height / PARTITION_Y))*PARTITION_X;
-		if (pre_idx != idx)
+		//タスクの終了を待機
+		auto additional_fishes = fut_load.get();
+		//魚の追加
+		while(!additional_fishes.empty())
 		{
-			partitons.at(pre_idx).erase(partitons.at(pre_idx).find(fish->get_id()));
-			partitons.at(idx).insert(std::make_pair(fish->get_id(), fish));
-			fish->set_pidx(idx);
+			add_fish_to_world(additional_fishes.back());
+			additional_fishes.pop_back();
 		}
-
-		fish->update(this);
-	}
-	for (auto& shark : sharks)
-	{
-		int idx = shark->get_pos().x / (int)(width / PARTITION_X)
-			+ (int)(shark->get_pos().y / (int)(height / PARTITION_Y))*PARTITION_X;
-		shark->set_pidx(idx);
-
-		shark->update(this);
 	}
 
-	//波動方程式による計算
-	/*  差分法
-	//波動方程式（c＝伝播速度）
-	   ∂^2u/∂t^2 = c^2∇^2 u
-	   -> (u[n+1] - 2u[n] + u[n-1])/(dt)^2 = c^2((ux-1[n] - 2u[n] + ux+1[n])/(dx)^2 + (uy-1[n] - 2u[n] + uy+1[n])/(dy)^2)
-	//減衰モデル（c＝減衰係数，ρ＝密度）
-	　 ∂^2u/∂t^2 += -c/ρ∂u/∂t
-	   -> (u[n+1] - 2u[n] + u[n-1])/(dt)^2 += -h(u[n]-u[n-1])/(dt)
-	*/
-	constexpr double dt = 0.016;
-	constexpr double c = 200;
-	constexpr double h = 0.1;
+	//ステップの更新
+	step += 1;
+
+//	//for debug
+//	auto end_t = std::chrono::system_clock::now();
+//	std::cout << "TS : " << std::chrono::duration_cast<std::chrono::microseconds>(end_t - start_t).count() << "\n";
+}
+
+void World::opengl_update()
+{
+	//OPENGL関連の処理（メインスレッドで実行する必要がある）
+
 	const double dx = (double)width / (SURF_RESOLUTION_X - 1);
 	const double dy = (double)height / (SURF_RESOLUTION_Y - 1);
-#ifdef DEBUG
-	//CFL条件 : dx > cdt（発散しないための条件）
-	assert(dx > c*dt && dy > c*dt, "CFL condition is not fulfilled!");
-#endif // DEBUG
-
-	//ステップ更新
-//	surf_vertex_z[0] = std::move(surf_vertex_z[1]);
-//	surf_vertex_z[1] = std::move(surf_vertex_z[2]);
-	surf_vertex_z[0] = surf_vertex_z[1];
-	surf_vertex_z[1] = surf_vertex_z[2];
-	for(int nx = 1; nx <= SURF_RESOLUTION_X; ++nx)
-	{
-		for(int ny = 1; ny <= SURF_RESOLUTION_Y; ++ny)
-		{
-			//波動方程式（差分法）
-			surf_vertex_z[2][nx][ny] = 2 * surf_vertex_z[1][nx][ny] - surf_vertex_z[0][nx][ny]
-				+ (c * c * dt * dt / dx / dx)
-					* (surf_vertex_z[1][nx - 1][ny] - 2 * surf_vertex_z[1][nx][ny] + surf_vertex_z[1][nx + 1][ny])
-				+ (c * c * dt * dt / dy / dy)
-					* (surf_vertex_z[1][nx][ny - 1] - 2 * surf_vertex_z[1][nx][ny] + surf_vertex_z[1][nx][ny + 1]);
-			//減衰
-			surf_vertex_z[2][nx][ny] += -h*(surf_vertex_z[1][nx][ny] - surf_vertex_z[0][nx][ny])*dt;
-		}
-	}
-
 	//---マウス操作による波の作成---
 	//行列を取得（モデルビュー／射影）
 	GLdouble mvM[16], prM[16];
@@ -308,13 +294,87 @@ void World::update()
 		{
 			for(int j = f_max(1, py - N); j <= f_min(SURF_RESOLUTION_Y, py + N); ++j)
 			{
-//				surf_vertex_z[0][i][j] = 20 + 10.0 * sin(3.141592 / (2 * N));
-//				surf_vertex_z[1][i][j] = 20 + 10.0 * sin(3.141592 / (2 * N));
+				//	surf_vertex_z[0][i][j] = 20 + 10.0 * sin(3.141592 / (2 * N));
+				//	surf_vertex_z[1][i][j] = 20 + 10.0 * sin(3.141592 / (2 * N));
 				surf_vertex_z[2][i][j] = 20 + 10.0 * sin(3.141592 / (2 * N));
 			}
 		}
 	}
 	//---
+}
+
+void World::update_entities()
+{
+	for(auto& tar : targets)
+	{
+		tar->update(this);
+	}
+	for(auto& fish : fishes)
+	{
+		//各fishがどこの領域に属するかを更新
+		vec2d pos = fish->get_pos();
+		int pre_idx = fish->get_pidx();
+		int idx = pos.x / (int)(width / PARTITION_X)
+			+ (int)(pos.y / (int)(height / PARTITION_Y))*PARTITION_X;
+		if(pre_idx != idx)
+		{
+			partitons.at(pre_idx).erase(partitons.at(pre_idx).find(fish->get_id()));
+			partitons.at(idx).insert(std::make_pair(fish->get_id(), fish));
+			fish->set_pidx(idx);
+		}
+
+		fish->update(this);
+	}
+	for(auto& shark : sharks)
+	{
+		int idx = shark->get_pos().x / (int)(width / PARTITION_X)
+			+ (int)(shark->get_pos().y / (int)(height / PARTITION_Y))*PARTITION_X;
+		shark->set_pidx(idx);
+
+		shark->update(this);
+	}
+}
+
+void World::calc_water_surface()
+{
+	//波動方程式による計算
+	/*  差分法
+	//波動方程式（c＝伝播速度）
+	∂^2u/∂t^2 = c^2∇^2 u
+	-> (u[n+1] - 2u[n] + u[n-1])/(dt)^2 = c^2((ux-1[n] - 2u[n] + ux+1[n])/(dx)^2 + (uy-1[n] - 2u[n] + uy+1[n])/(dy)^2)
+	//減衰モデル（c＝減衰係数，ρ＝密度）
+	　 ∂^2u/∂t^2 += -c/ρ∂u/∂t
+	  -> (u[n+1] - 2u[n] + u[n-1])/(dt)^2 += -h(u[n]-u[n-1])/(dt)
+	  */
+	constexpr double dt = 0.016;
+	constexpr double c = 200;
+	constexpr double h = 0.1; //減衰率
+	const double dx = (double)width / (SURF_RESOLUTION_X - 1);
+	const double dy = (double)height / (SURF_RESOLUTION_Y - 1);
+#ifdef DEBUG
+	//CFL条件 : dx > cdt（発散しないための条件）
+	assert(dx > c*dt && dy > c*dt, "CFL condition is not fulfilled!");
+#endif // DEBUG
+
+	//ステップ更新
+	//	surf_vertex_z[0] = std::move(surf_vertex_z[1]);
+	//	surf_vertex_z[1] = std::move(surf_vertex_z[2]);
+	surf_vertex_z[0] = surf_vertex_z[1];
+	surf_vertex_z[1] = surf_vertex_z[2];
+	for(int nx = 1; nx <= SURF_RESOLUTION_X; ++nx)
+	{
+		for(int ny = 1; ny <= SURF_RESOLUTION_Y; ++ny)
+		{
+			//波動方程式（差分法）
+			surf_vertex_z[2][nx][ny] = 2 * surf_vertex_z[1][nx][ny] - surf_vertex_z[0][nx][ny]
+				+ (c * c * dt * dt / dx / dx)
+				* (surf_vertex_z[1][nx - 1][ny] - 2 * surf_vertex_z[1][nx][ny] + surf_vertex_z[1][nx + 1][ny])
+				+ (c * c * dt * dt / dy / dy)
+				* (surf_vertex_z[1][nx][ny - 1] - 2 * surf_vertex_z[1][nx][ny] + surf_vertex_z[1][nx][ny + 1]);
+			//減衰
+			surf_vertex_z[2][nx][ny] += -h*(surf_vertex_z[1][nx][ny] - surf_vertex_z[0][nx][ny])*dt;
+		}
+	}
 }
 
 
@@ -368,6 +428,8 @@ void World::render()
 
 	//コースティクスマップの描画
 	glUseProgram(caustics_shader->get_prog());
+	glUniform1f(glGetUniformLocation(caustics_shader->get_prog(), "width"), (float)width);
+	glUniform1f(glGetUniformLocation(caustics_shader->get_prog(), "height"), (float)height);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, frame_buf);
 	const auto fbufs = std::vector<GLenum>{
 		GL_COLOR_ATTACHMENT0_EXT
@@ -419,6 +481,9 @@ void World::render()
 	//シェーダの設定
 	glUseProgram(water_shader->get_prog());
 	glUniform1i(glGetUniformLocation(water_shader->get_prog(), "envmap"), 1);
+	GLfloat x_scale = 1.0 / (float)width, y_scale = 1.0 / (float)height;
+	glUniform1f(glGetUniformLocation(water_shader->get_prog(), "x_scale"), x_scale);
+	glUniform1f(glGetUniformLocation(water_shader->get_prog(), "y_scale"), y_scale);
 
 	//バッファテクスチャデータの送信
 	glActiveTexture(GL_TEXTURE2);
@@ -426,16 +491,10 @@ void World::render()
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &buffer_data[0]);
 	glUniform1i(glGetUniformLocation(water_shader->get_prog(), "buf_tex"), 2);
 
-	//ノーマルマップデータの送信
-	glActiveTexture(GL_TEXTURE3);
-	glBindTexture(GL_TEXTURE_2D, normal_map);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, SURF_RESOLUTION_X, SURF_RESOLUTION_Y, GL_RGBA, GL_UNSIGNED_BYTE, &normal_data[0]);
-	glUniform1i(glGetUniformLocation(water_shader->get_prog(), "nrm_map"), 3);
-
 	//こースティックマップデータの送信
-	glActiveTexture(GL_TEXTURE4);
+	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_2D, caustics_map);
-	glUniform1i(glGetUniformLocation(water_shader->get_prog(), "cau_map"), 4);
+	glUniform1i(glGetUniformLocation(water_shader->get_prog(), "cau_map"), 3);
 
 	//質感の設定
 	GLfloat tcolor[4] = {1.0, 1.0, 1.0, 0.1}, scolor[4] = {1.0, 1.0, 1.0, 1.0};
@@ -526,40 +585,27 @@ void World::draw_water_surface()
 					vec3d(2 * dx, 2 * dy, surf_vertex_z[2][ix + 1][iy + 1] - surf_vertex_z[2][ix - 1][iy - 1]),
 					vec3d(2 * dx, -2 * dy, surf_vertex_z[2][ix + 1][iy - 1] - surf_vertex_z[2][ix - 1][iy + 1])).norm();
 				glNormal3d(norm.x, norm.y, norm.z);
-				//				vec3d norm = cross_vec3d(
-				//					vec3d(1.0, 0.0, (surf_vertex_z[2][ix + 1][iy] - surf_vertex_z[2][ix - 1][iy]) / (2 * dx)),
-				//					vec3d(0.0, 1.0, (surf_vertex_z[2][ix][iy + 1] - surf_vertex_z[2][ix][iy - 1]) / (2 * dy))).norm();
-				//				glNormal3d(-norm.x, -norm.y, -norm.z);
-			};
-
-			//法線マップの適用
-			auto set_nmap = [&](int ix, int iy)
-			{
-				normal_data[ix * 4 + iy * SURF_RESOLUTION_X * 4 + 0] = norm.x * 127 + 127;
-				normal_data[ix * 4 + iy * SURF_RESOLUTION_X * 4 + 1] = norm.y * 127 + 127;
-				normal_data[ix * 4 + iy * SURF_RESOLUTION_X * 4 + 2] = norm.z * 127 + 127;
-				normal_data[ix * 4 + iy * SURF_RESOLUTION_X * 4 + 3] = 255;
+				//vec3d norm = cross_vec3d(
+				//		vec3d(1.0, 0.0, (surf_vertex_z[2][ix + 1][iy] - surf_vertex_z[2][ix - 1][iy]) / (2 * dx)),
+				//		vec3d(0.0, 1.0, (surf_vertex_z[2][ix][iy + 1] - surf_vertex_z[2][ix][iy - 1]) / (2 * dy))).norm();
+				//		glNormal3d(-norm.x, -norm.y, -norm.z);
 			};
 
 			// 法線＋テクスチャ＋頂点座標の設定
 			// （x,yインデックスは1つずつずれて頂点位置に対応）
 			set_norm(nx + 1, ny + 1);
-			set_nmap(nx, ny);
 			glTexCoord2d(x / width, y / height);
 			glVertex3d(x, y, surf_vertex_z[2][nx + 1][ny + 1]);
 
 			set_norm(nx + 2, ny + 1);
-			set_nmap(nx + 1, ny);
 			glTexCoord2d((x + dx) / width, y / height);
 			glVertex3d(x + dx, y, surf_vertex_z[2][nx + 2][ny + 1]);
 
 			set_norm(nx + 2, ny + 2);
-			set_nmap(nx + 1, ny + 1);
 			glTexCoord2d((x + dx) / width, (y + dy) / height);
 			glVertex3d(x + dx, y + dy, surf_vertex_z[2][nx + 2][ny + 2]);
 
 			set_norm(nx + 1, ny + 2);
-			set_nmap(nx, ny + 1);
 			glTexCoord2d(x / width, (y + dy) / height);
 			glVertex3d(x, y + dy, surf_vertex_z[2][nx + 1][ny + 2]);
 		}
@@ -568,10 +614,11 @@ void World::draw_water_surface()
 }
 
 
-std::list<Fish*> World::get_neighborfishes(int idx)
+std::vector<Fish*> World::get_neighborfishes(int idx)
 {
 	//idxの領域の周辺８つの領域を含めて、属するfishを返す
-	std::list<Fish*> nfishes;
+	std::vector<Fish*> nfishes;
+	nfishes.reserve(100);
 	int x = idx%PARTITION_X;
 	int y = idx / PARTITION_X;
 	for (int i = x - 1; i <= x + 1; ++i)
@@ -588,5 +635,17 @@ std::list<Fish*> World::get_neighborfishes(int idx)
 			}
 		}
 	}
-	return nfishes;
+	return nfishes; //NRVO
+}
+
+void World::add_fish_to_world(Fish* fish)
+{
+	//リストに追加
+	fishes.push_back(fish);
+
+	//どこの領域にいるかを計算・更新
+	int idx = fish->get_pos().x / (int)(width / PARTITION_X)
+		+ (int)(fish->get_pos().y / (int)(height / PARTITION_Y))*PARTITION_X;
+	partitons.at(idx).insert(std::make_pair(fish->get_id(), fish));
+	fish->set_pidx(idx);
 }

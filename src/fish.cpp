@@ -1,5 +1,5 @@
 ﻿
-#include <list>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <GL/glut.h>
@@ -46,8 +46,9 @@ Fish::~Fish()
 void Fish::update(World* p_world)
 {
 	//近傍にいる魚を調べ、neighborsに追加する
-	std::list<Fish*> neighbors;
-	std::list<Fish*> lfishes = p_world->get_neighborfishes(partidx);
+	std::vector<Fish*> neighbors;
+	neighbors.reserve(100);
+	auto lfishes = p_world->get_neighborfishes(partidx);
 	for (auto& lfish : lfishes)
 	{
 		double lsq = (pos - lfish->get_pos()).lengthsq();
@@ -62,7 +63,7 @@ void Fish::update(World* p_world)
 
 	//最も近傍にいる敵を探す
 	Fish* nearest_enemy = NULL;
-	std::list<Shark*>& lsharks = p_world->get_sharks();
+	auto& lsharks = p_world->get_sharks();
 	for (auto& lshark : lsharks)
 	{
 		double lsq = (pos - lshark->get_pos()).lengthsq();
@@ -82,7 +83,7 @@ void Fish::update(World* p_world)
 
 	//最も近傍のターゲットを探す
 	Target* nearest_target = NULL;
-	std::list<Target*>& ltarget = p_world->get_targets();
+	auto& ltarget = p_world->get_targets();
 	for(auto& tar : ltarget)
 	{
 		double lsq = (pos - tar->get_pos()).lengthsq();

@@ -44,6 +44,8 @@ include_directories(
 
 add_executable (osakana_prj
 	src/main.cpp
+	src/vec2d.h
+	src/vec3d.h
 	src/behavior.cpp
 	src/behavior.h
 	src/fish.cpp
@@ -60,6 +62,10 @@ add_executable (osakana_prj
 	src/shader.h
 	src/vision.cpp
 	src/vision.h
+	src/fish_loader.cpp
+	src/fish_loader.h
+	
+	src/win/dirent.h
 )
 
 

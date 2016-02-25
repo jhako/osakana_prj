@@ -1,10 +1,10 @@
-
+ï»¿
 #ifndef VEC3D_H
 #define VEC3D_H
 
 #include <cmath>
 
-//--“ñŸŒ³ƒxƒNƒgƒ‹--
+//--ä¸‰æ¬¡å…ƒãƒ™ã‚¯ãƒˆãƒ«--
 struct vec3d
 {
 	double x, y, z;
@@ -12,16 +12,16 @@ struct vec3d
 	vec3d() : x(0.0), y(0.0), z(0.0) {}
 	vec3d(double x_, double y_, double z_) : x(x_), y(y_), z(z_) {}
 
-	//’·‚³‚ğ‹‚ß‚é
+	//é•·ã•ã‚’æ±‚ã‚ã‚‹
 	double length(){ return sqrt(x*x + y*y + z*z); }
-	//“ñæ’·‚³‚ğ‹‚ß‚é
+	//äºŒä¹—é•·ã•ã‚’æ±‚ã‚ã‚‹
 	double lengthsq(){ return x*x + y*y + z*z; }
-	//³‹K‰»ƒxƒNƒgƒ‹‚ğ‹‚ß‚é
+	//æ­£è¦åŒ–ãƒ™ã‚¯ãƒˆãƒ«ã‚’æ±‚ã‚ã‚‹
 	vec3d norm(){ double L = length(); return vec3d(x / L, y / L, z / L); }
-	//³‹K‰»
+	//æ­£è¦åŒ–
 	void normalize(){ *this /= this->length(); }
 
-	//‰‰Zq‚ÌƒI[ƒo[ƒ[ƒhil‘¥‰‰Z‚ğ‰Â”\‚É‚·‚éj
+	//æ¼”ç®—å­ã®ã‚ªãƒ¼ãƒãƒ¼ãƒ­ãƒ¼ãƒ‰ï¼ˆå››å‰‡æ¼”ç®—ã‚’å¯èƒ½ã«ã™ã‚‹ï¼‰
 	vec3d operator+(const vec3d& v)
 	{
 		return vec3d(x + v.x, y + v.y, z + v.z);
@@ -66,7 +66,7 @@ struct vec3d
 		return *this;
 	}
 
-	//vec3d“¯m‚Ì*‚Í“àÏ
+	//vec3dåŒå£«ã®*ã¯å†…ç©
 	double operator*(const vec3d& v)
 	{
 		return x * v.x + y * v.y, z * v.z;

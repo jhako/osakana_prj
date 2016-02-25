@@ -15,12 +15,9 @@ varying vec3 vPosW;
 // GLから設定される定数(uniform)
 const float etaRatio = 1.0 / 1.333; //air->water
 //const float etaRatio = 1.333; //water->air
-const float x_scale = 1.0/640.0; //should be uniform
-const float y_scale = 1.0/640.0; //should be uniform
-const float nrm_x_scl = 1.0/100.0; //should be uniform
-const float nrm_y_scl = 1.0/100.0; //should	be uniform
+uniform float x_scale;
+uniform float y_scale;
 uniform sampler2D buf_tex;
-uniform sampler2D nrm_map;
 uniform sampler2D cau_map;
 
 void main(void)
@@ -122,8 +119,6 @@ void main(void)
 	{
 		for(int j = 0; j < CausticsSample; ++j)
 		{
-//			vec2 ccrd = gl_TexCoord[0].xy + vec2((i-CausticsSample/2)*nrm_x_scl, (j-CausticsSample/2)*nrm_x_scl);
-//			vec3 xN = normalize(gl_NormalMatrix * (texture2D(nrm_map, ccrd).xyz * 2 - 1));
 			vec2 ccrd = gl_TexCoord[0].xy + vec2((i-CausticsSample/2)*x_scale, (j-CausticsSample/2)*y_scale);
 			vec3 xN = normalize(gl_NormalMatrix * (texture2D(cau_map, ccrd).xyz * 2 - 1));
 			float cD = max(dot(xN, IL), 0.0001);
