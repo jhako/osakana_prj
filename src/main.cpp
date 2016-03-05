@@ -82,7 +82,8 @@ static void update()
 	int value_min = cv::getTrackbarPos("Value min", "Capture");
 	int value_max = cv::getTrackbarPos("Value max", "Capture");
 
-	colorExtraction(&frame, &dst, CV_BGR2HSV, hue_min, hue_max, satulation_min, satulation_max, value_min, value_max); //色抽出
+	//colorExtraction(&frame, &dst, CV_BGR2HSV, hue_min, hue_max, satulation_min, satulation_max, value_min, value_max); //色抽出
+	perspective(&frame, &dst);
 	cv::imshow("Capture", dst);
 	cv::waitKey(10);
 
