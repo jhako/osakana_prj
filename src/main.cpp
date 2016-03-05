@@ -184,6 +184,8 @@ int main(int argc, char *argv[])
 	cv::createTrackbar("Satulation max", "Capture", &slider_value, 180);
 	cv::createTrackbar("Value min", "Capture", &slider_value, 180);
 	cv::createTrackbar("Value max", "Capture", &slider_value, 180);
+
+	cv::setMouseCallback("Capture", onMouse, 0);
 	//メインループの実行
 	glutMainLoop();
 

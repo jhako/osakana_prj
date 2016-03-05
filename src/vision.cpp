@@ -1,6 +1,9 @@
+#include <iostream>
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
 #include "vision.h"
 
 void colorExtraction(cv::Mat* src, cv::Mat* dst,
@@ -77,7 +80,35 @@ void perspective(cv::Mat* src, cv::Mat* dst)
   return;
 }
 
-/*
+#define OPENCV_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + (c))
+#define OPENCV_VERSION_CODE OPENCV_VERSION(CV_MAJOR_VERSION, CV_MINOR_VERSION, CV_SUBMINOR_VERSION)
+
+#if OPENCV_VERSION_CODE < OPENCV_VERSION(2,3,1)
+namespace cv
+{
+  enum {
+    EVENT_MOUSEMOVE      =CV_EVENT_MOUSEMOVE,
+    EVENT_LBUTTONDOWN    =CV_EVENT_LBUTTONDOWN,
+    EVENT_RBUTTONDOWN    =CV_EVENT_RBUTTONDOWN,
+    EVENT_MBUTTONDOWN    =CV_EVENT_MBUTTONDOWN,
+    EVENT_LBUTTONUP      =CV_EVENT_LBUTTONUP,
+    EVENT_RBUTTONUP      =CV_EVENT_RBUTTONUP,
+    EVENT_MBUTTONUP      =CV_EVENT_MBUTTONUP,
+    EVENT_LBUTTONDBLCLK  =CV_EVENT_LBUTTONDBLCLK,
+    EVENT_RBUTTONDBLCLK  =CV_EVENT_RBUTTONDBLCLK,
+    EVENT_MBUTTONDBLCLK  =CV_EVENT_MBUTTONDBLCLK
+  };
+  enum {
+    EVENT_FLAG_LBUTTON   =CV_EVENT_FLAG_LBUTTON,
+    EVENT_FLAG_RBUTTON   =CV_EVENT_FLAG_RBUTTON,
+    EVENT_FLAG_MBUTTON   =CV_EVENT_FLAG_MBUTTON,
+    EVENT_FLAG_CTRLKEY   =CV_EVENT_FLAG_CTRLKEY,
+    EVENT_FLAG_SHIFTKEY  =CV_EVENT_FLAG_SHIFTKEY,
+    EVENT_FLAG_ALTKEY    =CV_EVENT_FLAG_ALTKEY
+  };
+}
+#endif
+
 void onMouse( int event, int x, int y, int flag, void* )
 {
   std::string desc;
@@ -132,4 +163,4 @@ void onMouse( int event, int x, int y, int flag, void* )
 
   std::cout << desc << " (" << x << ", " << y << ")" << std::endl;
 }
-*/
+
