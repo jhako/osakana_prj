@@ -6,6 +6,35 @@
 #include <opencv2/highgui/highgui.hpp>
 #include "vision.h"
 
+#define OPENCV_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + (c))
+#define OPENCV_VERSION_CODE OPENCV_VERSION(CV_MAJOR_VERSION, CV_MINOR_VERSION, CV_SUBMINOR_VERSION)
+
+#if OPENCV_VERSION_CODE < OPENCV_VERSION(2,3,1)
+namespace cv
+{
+  enum {
+    EVENT_MOUSEMOVE      =CV_EVENT_MOUSEMOVE,
+    EVENT_LBUTTONDOWN    =CV_EVENT_LBUTTONDOWN,
+    EVENT_RBUTTONDOWN    =CV_EVENT_RBUTTONDOWN,
+    EVENT_MBUTTONDOWN    =CV_EVENT_MBUTTONDOWN,
+    EVENT_LBUTTONUP      =CV_EVENT_LBUTTONUP,
+    EVENT_RBUTTONUP      =CV_EVENT_RBUTTONUP,
+    EVENT_MBUTTONUP      =CV_EVENT_MBUTTONUP,
+    EVENT_LBUTTONDBLCLK  =CV_EVENT_LBUTTONDBLCLK,
+    EVENT_RBUTTONDBLCLK  =CV_EVENT_RBUTTONDBLCLK,
+    EVENT_MBUTTONDBLCLK  =CV_EVENT_MBUTTONDBLCLK
+  };
+  enum {
+    EVENT_FLAG_LBUTTON   =CV_EVENT_FLAG_LBUTTON,
+    EVENT_FLAG_RBUTTON   =CV_EVENT_FLAG_RBUTTON,
+    EVENT_FLAG_MBUTTON   =CV_EVENT_FLAG_MBUTTON,
+    EVENT_FLAG_CTRLKEY   =CV_EVENT_FLAG_CTRLKEY,
+    EVENT_FLAG_SHIFTKEY  =CV_EVENT_FLAG_SHIFTKEY,
+    EVENT_FLAG_ALTKEY    =CV_EVENT_FLAG_ALTKEY
+  };
+}
+#endif
+
 void colorExtraction(cv::Mat* src, cv::Mat* dst,
 		     int code,
 		     int ch1Lower, int ch1Upper,
@@ -65,102 +94,51 @@ void colorExtraction(cv::Mat* src, cv::Mat* dst,
   *dst = maskedImage;
 }
 
-void perspective(cv::Mat* src, cv::Mat* dst)
+
+Pers::Pers()
+{
+  //pos_x = pos_y = 0;
+}
+
+void Pers::perspective(cv::Mat* src, cv::Mat* dst)
 {
   cv::Point2f pts1[] = {cv::Point2f(150,150),cv::Point2f(150,300),cv::Point2f(350,300),cv::Point2f(350,150)};
   cv::Point2f pts2[] = {cv::Point2f(200,150),cv::Point2f(200,300),cv::Point2f(340,270),cv::Point2f(340,180)};
-
+    
   //cv::Point2f pts1[] = {cv::Point2f(150,150.),cv::Point2f(150,300.),cv::Point2f(350,300.),cv::Point2f(350,150.)};
   //cv::Point2f pts2[] = {cv::Point2f(200,200.),cv::Point2f(150,300.),cv::Point2f(350,300.),cv::Point2f(300,200.)};
-
+  
   // 透視変換行列を計算
   cv::Mat perspective_matrix = cv::getPerspectiveTransform(pts1, pts2);
   // 変換
   cv::warpPerspective(*src, *dst, perspective_matrix, (*src).size(), cv::INTER_LINEAR);  
   return;
 }
-
-#define OPENCV_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + (c))
-#define OPENCV_VERSION_CODE OPENCV_VERSION(CV_MAJOR_VERSION, CV_MINOR_VERSION, CV_SUBMINOR_VERSION)
-
-#if OPENCV_VERSION_CODE < OPENCV_VERSION(2,3,1)
-namespace cv
+  
+void Pers::onMouse(int event, int x, int y, int flag, void*)
 {
-  enum {
-    EVENT_MOUSEMOVE      =CV_EVENT_MOUSEMOVE,
-    EVENT_LBUTTONDOWN    =CV_EVENT_LBUTTONDOWN,
-    EVENT_RBUTTONDOWN    =CV_EVENT_RBUTTONDOWN,
-    EVENT_MBUTTONDOWN    =CV_EVENT_MBUTTONDOWN,
-    EVENT_LBUTTONUP      =CV_EVENT_LBUTTONUP,
-    EVENT_RBUTTONUP      =CV_EVENT_RBUTTONUP,
-    EVENT_MBUTTONUP      =CV_EVENT_MBUTTONUP,
-    EVENT_LBUTTONDBLCLK  =CV_EVENT_LBUTTONDBLCLK,
-    EVENT_RBUTTONDBLCLK  =CV_EVENT_RBUTTONDBLCLK,
-    EVENT_MBUTTONDBLCLK  =CV_EVENT_MBUTTONDBLCLK
-  };
-  enum {
-    EVENT_FLAG_LBUTTON   =CV_EVENT_FLAG_LBUTTON,
-    EVENT_FLAG_RBUTTON   =CV_EVENT_FLAG_RBUTTON,
-    EVENT_FLAG_MBUTTON   =CV_EVENT_FLAG_MBUTTON,
-    EVENT_FLAG_CTRLKEY   =CV_EVENT_FLAG_CTRLKEY,
-    EVENT_FLAG_SHIFTKEY  =CV_EVENT_FLAG_SHIFTKEY,
-    EVENT_FLAG_ALTKEY    =CV_EVENT_FLAG_ALTKEY
-  };
-}
-#endif
-
-void onMouse( int event, int x, int y, int flag, void* )
-{
-  std::string desc;
-
   // マウスイベントを取得
-  switch(event) {
-  case cv::EVENT_MOUSEMOVE:
-    desc += "MOUSE_MOVE";
-    break;
-  case cv::EVENT_LBUTTONDOWN:
-    desc += "LBUTTON_DOWN";
-    break;
-  case cv::EVENT_RBUTTONDOWN:
-    desc += "RBUTTON_DOWN";
-    break;
-  case cv::EVENT_MBUTTONDOWN:
-    desc += "MBUTTON_DOWN";
-    break;
-  case cv::EVENT_LBUTTONUP:
-    desc += "LBUTTON_UP";
-    break;
-  case cv::EVENT_RBUTTONUP:
-    desc += "RBUTTON_UP";
-    break;
-  case cv::EVENT_MBUTTONUP:
-    desc += "MBUTTON_UP";
-    break;
-  case cv::EVENT_LBUTTONDBLCLK:
-    desc += "LBUTTON_DBLCLK";
-    break;
-  case cv::EVENT_RBUTTONDBLCLK:
-    desc += "RBUTTON_DBLCLK";
-    break;
-  case cv::EVENT_MBUTTONDBLCLK:
-    desc += "MBUTTON_DBLCLK";
-    break;
-  }
+  if(event ==  cv::EVENT_LBUTTONDOWN && pos_x.size() < 4){
+  pos_x.push_back(x);
+  pos_y.push_back(y);
+ }
+  printpos();
 
-  // マウスボタン，及び修飾キーを取得
-  if(flag & cv::EVENT_FLAG_LBUTTON)
-    desc += " + LBUTTON";
-  if(flag & cv::EVENT_FLAG_RBUTTON)
-    desc += " + RBUTTON";
-  if(flag & cv::EVENT_FLAG_MBUTTON)
-    desc += " + MBUTTON";
-  if(flag & cv::EVENT_FLAG_CTRLKEY)
-    desc += " + CTRL";
-  if(flag & cv::EVENT_FLAG_SHIFTKEY)
-    desc += " + SHIFT";
-  if(flag & cv::EVENT_FLAG_ALTKEY)
-    desc += " + ALT";
-
-  std::cout << desc << " (" << x << ", " << y << ")" << std::endl;
+  return;
 }
+
+void Pers::printpos()
+{
+  for(auto x: pos_x){
+    std::cout << x;
+  }
+  std::cout << std::endl;
+  for(auto y: pos_y){
+    std::cout << y;
+  }
+  std::cout << std::endl;
+  return;
+}
+
+
 

@@ -13,6 +13,9 @@
 //Worldの実体（updateとdisplayで使うためグローバル）
 World* p_world;
 
+//Perspectiveの実体
+Pers *p_pers;
+
 //FPS（フレーム更新数）
 const int FPS_micro = 1000000.0 / 60; //60 FPS
 std::chrono::time_point<std::chrono::system_clock> last_time;
@@ -75,6 +78,8 @@ static void update()
 	cv::Mat frame;
 	cv::Mat dst;
 	cap >> frame;
+
+	//トラックバーの値の取得
 	int hue_min = cv::getTrackbarPos("Hue min", "Capture");
 	int hue_max = cv::getTrackbarPos("Hue max", "Capture");
 	int satulation_min = cv::getTrackbarPos("Satulation min", "Capture");
@@ -82,11 +87,20 @@ static void update()
 	int value_min = cv::getTrackbarPos("Value min", "Capture");
 	int value_max = cv::getTrackbarPos("Value max", "Capture");
 
-	//colorExtraction(&frame, &dst, CV_BGR2HSV, hue_min, hue_max, satulation_min, satulation_max, value_min, value_max); //色抽出
-	perspective(&frame, &dst);
+	//色抽出
+	colorExtraction(&frame, &dst, CV_BGR2HSV, hue_min, hue_max, satulation_min, satulation_max, value_min, value_max);
+
+	//透視変換
+	p_pers->perspective(&frame, &dst);
 	cv::imshow("Capture", dst);
 	cv::waitKey(10);
 
+}
+
+static void cv_onMouse(int event, int x, int y, int flag, void* param)
+{
+  Pers* pers = static_cast<Pers*>(param);
+  pers->onMouse(event, x, y, flag, nullptr);
 }
 
 int main(int argc, char *argv[])
@@ -168,7 +182,7 @@ int main(int argc, char *argv[])
 	}
 
 	p_world = new World(w, h);
-
+	p_pers = new Pers();
 
 	//--OpenCVの設定--
 	//カメラの設定
@@ -177,6 +191,7 @@ int main(int argc, char *argv[])
 	if(!cap.isOpened()) return -1;
 	//ウィンドウの作成
 	cv::namedWindow("Capture", CV_WINDOW_AUTOSIZE | CV_WINDOW_FREERATIO);
+	//トラックバーの作成
 	int slider_value = 50;
 	cv::createTrackbar("Hue min", "Capture", &slider_value, 180);
 	cv::createTrackbar("Hue max", "Capture", &slider_value, 180);
@@ -185,7 +200,9 @@ int main(int argc, char *argv[])
 	cv::createTrackbar("Value min", "Capture", &slider_value, 180);
 	cv::createTrackbar("Value max", "Capture", &slider_value, 180);
 
-	cv::setMouseCallback("Capture", onMouse, 0);
+	//マウスコールバックの設定
+	//cv::setMouseCallback("Capture", p_pers->onMouse, 0);
+	cv::setMouseCallback("Capture", cv_onMouse, p_pers);
 	//メインループの実行
 	glutMainLoop();
 
