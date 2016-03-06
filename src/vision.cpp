@@ -97,21 +97,24 @@ void colorExtraction(cv::Mat* src, cv::Mat* dst,
 
 Pers::Pers()
 {
-  //pos_x = pos_y = 0;
+  //nothing to do;
+}
+
+int Pers::get_vector_size(){
+  return pos_x.size();
 }
 
 void Pers::perspective(cv::Mat* src, cv::Mat* dst)
 {
-  cv::Point2f pts1[] = {cv::Point2f(150,150),cv::Point2f(150,300),cv::Point2f(350,300),cv::Point2f(350,150)};
-  cv::Point2f pts2[] = {cv::Point2f(200,150),cv::Point2f(200,300),cv::Point2f(340,270),cv::Point2f(340,180)};
+  if(get_vector_size() == 4){
+    cv::Point2f pts1[] = {cv::Point2f(pos_x[0],pos_y[0]),cv::Point2f(pos_x[1],pos_y[1]),cv::Point2f(pos_x[2],pos_x[2]),cv::Point2f(pos_x[3],pos_y[3])};
+    cv::Point2f pts2[] = {cv::Point2f(0,0),cv::Point2f(300,0),cv::Point2f(300,300),cv::Point2f(0,300)};
     
-  //cv::Point2f pts1[] = {cv::Point2f(150,150.),cv::Point2f(150,300.),cv::Point2f(350,300.),cv::Point2f(350,150.)};
-  //cv::Point2f pts2[] = {cv::Point2f(200,200.),cv::Point2f(150,300.),cv::Point2f(350,300.),cv::Point2f(300,200.)};
-  
-  // 透視変換行列を計算
-  cv::Mat perspective_matrix = cv::getPerspectiveTransform(pts1, pts2);
-  // 変換
-  cv::warpPerspective(*src, *dst, perspective_matrix, (*src).size(), cv::INTER_LINEAR);  
+    // 透視変換行列を計算
+    cv::Mat perspective_matrix = cv::getPerspectiveTransform(pts1, pts2);
+    // 変換
+    cv::warpPerspective(*src, *dst, perspective_matrix, (*src).size(), cv::INTER_LINEAR);
+  }  
   return;
 }
   

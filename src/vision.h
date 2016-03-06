@@ -8,6 +8,7 @@ class Pers{
   std::vector<int> pos_x, pos_y;
  public:
   Pers();
+  int get_vector_size();
   void perspective(cv::Mat*, cv::Mat*);
   void onMouse(int, int, int, int, void*);
   void printpos();

@@ -76,6 +76,7 @@ static void update()
 
 	//カメラデータの取得
 	cv::Mat frame;
+	cv::Mat tmp_frame;
 	cv::Mat dst;
 	cap >> frame;
 
@@ -87,12 +88,13 @@ static void update()
 	int value_min = cv::getTrackbarPos("Value min", "Capture");
 	int value_max = cv::getTrackbarPos("Value max", "Capture");
 
-	//色抽出
-	colorExtraction(&frame, &dst, CV_BGR2HSV, hue_min, hue_max, satulation_min, satulation_max, value_min, value_max);
-
-	//透視変換
-	p_pers->perspective(&frame, &dst);
-	cv::imshow("Capture", dst);
+	if(p_pers->get_vector_size() == 4){
+	  p_pers->perspective(&frame, &tmp_frame); //透視変換
+	  colorExtraction(&tmp_frame, &dst, CV_BGR2HSV, hue_min, hue_max, satulation_min, satulation_max, value_min, value_max);//色抽出
+	  cv::imshow("Capture", dst);
+	}else{
+	  cv::imshow("Capture", frame);
+	}
 	cv::waitKey(10);
 
 }
