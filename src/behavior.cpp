@@ -16,47 +16,50 @@ const double KF = 0.3;   //逃避
 const double KArr = 0.05;   //到着
 
 
-vec2d Behavior::separation(Fish* self, World* p_world, std::vector<Fish*>& neighbors)
+vec2d Behavior::separation(Fish* self, World* p_world, std::list<Fish*>& neighbors)
 {
 	if (neighbors.size() == 0)
 		return vec2d();
 
 	//近傍の各対象に対し、距離に反比例する力を計算
 	vec2d force;
-	for (auto& neighbor : neighbors)
+	for (std::list<Fish*>::iterator it = neighbors.begin();
+	it != neighbors.end(); ++it)
 	{
-		vec2d tovec = self->get_pos() - neighbor->get_pos();
+		vec2d tovec = self->get_pos() - (*it)->get_pos();
 		force += tovec.norm() / tovec.length();
 	}
 	return force*KS;
 }
 
 
-vec2d Behavior::alignment(Fish* self, World* p_world, std::vector<Fish*>& neighbors)
+vec2d Behavior::alignment(Fish* self, World* p_world, std::list<Fish*>& neighbors)
 {
 	if (neighbors.size() == 0) return vec2d();
 
 	//近傍の全対象の向きの平均を計算し、それに合わせるような力を計算
 	vec2d ave;
-	for(auto& neighbor : neighbors)
+	for (std::list<Fish*>::iterator it = neighbors.begin();
+	it != neighbors.end(); ++it)
 	{
-		ave += neighbor->get_dire();
+		ave += (*it)->get_dire();
 	}
 	ave /= neighbors.size();
 	return (ave - self->get_dire())*KA;
 
 }
 
-vec2d Behavior::cohesion(Fish* self, World* p_world, std::vector<Fish*>& neighbors)
+vec2d Behavior::cohesion(Fish* self, World* p_world, std::list<Fish*>& neighbors)
 {
 	if (neighbors.size() == 0) return vec2d();
 
 	//近傍全対象の中心を計算し、そこに向かう力を与える
 	vec2d center;
 	int num = 0;
-	for(auto& neighbor : neighbors)
+	for (std::list<Fish*>::iterator it = neighbors.begin();
+	it != neighbors.end(); ++it)
 	{
-		center += neighbor->get_pos();
+		center += (*it)->get_pos();
 		++num;
 	}
 	center /= num;

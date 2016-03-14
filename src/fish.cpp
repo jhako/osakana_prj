@@ -1,5 +1,5 @@
 ﻿
-
+#include <list>
 #include <stdio.h>
 #include <stdlib.h>
 #include <GL/glut.h>
@@ -46,44 +46,43 @@ Fish::~Fish()
 void Fish::update(World* p_world)
 {
 	//近傍にいる魚を調べ、neighborsに追加する
-	std::vector<Fish*> neighbors;
-	neighbors.reserve(100);
-	auto lfishes = p_world->get_neighborfishes(partidx);
-	for (auto& lfish : lfishes)
+	std::list<Fish*> neighbors;
+	std::vector<Fish*> lfish = p_world->get_neighborfishes(partidx);
+	for (int i = 0; i < lfish.size(); ++i)
 	{
-		double lsq = (pos - lfish->get_pos()).lengthsq();
+		double lsq = (pos - lfish.at(i)->get_pos()).lengthsq();
 
 		if (lsq < 0.0001)
 			continue; //自分自身
 		if (lsq < RadiusForNeighbors*RadiusForNeighbors)
 		{
-			neighbors.push_back(lfish);
+			neighbors.push_back(lfish.at(i));
 		}
 	}
 
 	//最も近傍にいる敵を探す
 	Fish* nearest_enemy = NULL;
-	auto& lsharks = p_world->get_sharks();
-	for (auto& lshark : lsharks)
+	std::vector<Shark*>& lshark = p_world->get_sharks();
+	for (int i = 0; i < lshark.size(); ++i)
 	{
-		double lsq = (pos - lshark->get_pos()).lengthsq();
+		double lsq = (pos - lshark.at(i)->get_pos()).lengthsq();
 		if (lsq < RadiusForEnemies*RadiusForEnemies)
 		{
 			if (!nearest_enemy)
 			{
-				nearest_enemy = lshark;
+				nearest_enemy = lshark.at(i);
 				continue;
 			}
 			if (lsq < (nearest_enemy->get_pos() - pos).lengthsq())
 			{
-				nearest_enemy = lshark;
+				nearest_enemy = lshark.at(i);
 			}
 		}
 	}
 
 	//最も近傍のターゲットを探す
 	Target* nearest_target = NULL;
-	auto& ltarget = p_world->get_targets();
+	std::vector<Target*>& ltarget = p_world->get_targets();
 	for(auto& tar : ltarget)
 	{
 		double lsq = (pos - tar->get_pos()).lengthsq();
