@@ -21,20 +21,20 @@ void Shark::update(World* p_world)
 {
 	//最近傍のfishを探す
 	Fish* nearest_fish = NULL;
-	auto lfishes = p_world->get_neighborfishes(partidx);
-	for (auto& lfish : lfishes)
+	std::vector<Fish*> lfish = p_world->get_neighborfishes(partidx);
+	for (int i = 0; i < lfish.size(); ++i)
 	{
-		double lsq = (pos - lfish->get_pos()).lengthsq();
+		double lsq = (pos - lfish.at(i)->get_pos()).lengthsq();
 		if (lsq < RADIUS*RADIUS)
 		{
 			if (!nearest_fish)
 			{
-				nearest_fish = lfish;
+				nearest_fish = lfish.at(i);
 				continue;
 			}
 			if (lsq < (nearest_fish->get_pos() - pos).lengthsq())
 			{
-				nearest_fish = lfish;
+				nearest_fish = lfish.at(i);
 			}
 		}
 	}
