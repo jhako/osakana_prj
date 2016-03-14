@@ -1,12 +1,12 @@
-﻿#include <iostream>
+﻿
+#include <iostream>
 #include <stdlib.h>
-#include <time.h>
 #include <GL/glew.h>
 #include <GL/glut.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <chrono>
-#include <thread>
+#include <future>
 #include "world.h"
 #include "vision.h"
 
@@ -14,11 +14,21 @@
 World* p_world;
 
 //FPS（フレーム更新数）
-const int FPS_micro = 1000000.0 / 60; //60 FPS
+const int FPS_micro = 1000000.0 / 50; //50 FPS
 std::chrono::time_point<std::chrono::system_clock> last_time;
 
 //OpenCV用
-cv::VideoCapture cap(0);
+#define USE_CAPTURE
+#ifdef USE_CAPTURE
+	cv::VideoCapture cap(0); //キャプチャ
+	cv::Mat cv_tex; //CVWindowに表示するテクスチャ
+#endif
+
+//ミューテックス
+std::mutex mtx;
+
+//フラグ
+bool flag_exit = false;
 
 static void display()
 {
@@ -35,7 +45,7 @@ static void keyboard(unsigned char key, int x, int y)
 	}
 }
 
-void mouse(int button, int state, int x, int y)
+static void mouse(int button, int state, int x, int y)
 {
 	p_world->set_mouse_pos(vec2d(x, y));
 	if(button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
@@ -48,45 +58,90 @@ void mouse(int button, int state, int x, int y)
 	}
 }
 
-void motion(int x, int y)
+static void motion(int x, int y)
 {
 	p_world->set_mouse_pos(vec2d(x, y));
 }
 
 static void update()
 {
+
+	//for debug
+	static int debug_step = 0; const int DCount = 10;
+	static std::chrono::time_point<std::chrono::system_clock> start_t, end_t;
+	if(debug_step == 0)
+		start_t = std::chrono::system_clock::now();
+
+
+	//Worldのアップデート
 	p_world->update();
 
 	//更新のたびに再描画を行う
 	glutPostRedisplay();
 
+	//GL関連のアップデート
+	p_world->opengl_update();
+
+
+	//for debug
+	if(debug_step == DCount)
+	{
+		end_t = std::chrono::system_clock::now();
+		auto ts = std::chrono::duration_cast<std::chrono::milliseconds>(end_t - start_t).count();
+		std::cout << "time-span : " << ts << ",  FPS : " << 1000.0 * DCount / ts << std::endl;
+		debug_step = 0;
+	}
+	else
+		++debug_step;
+
+
 	auto current_time = std::chrono::system_clock::now();
 
 	//指定したFPSにフレームレートを維持
 	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(current_time - last_time).count();
-	if (duration < FPS_micro)
+	if(duration < FPS_micro)
 	{
 		std::this_thread::sleep_for(std::chrono::microseconds(FPS_micro - duration));
 	}
-
 	last_time = current_time;
 
-	//カメラデータの取得
-	cv::Mat frame;
-	cv::Mat dst;
-	cap >> frame;
-	int hue_min = cv::getTrackbarPos("Hue min", "Capture");
-	int hue_max = cv::getTrackbarPos("Hue max", "Capture");
-	int satulation_min = cv::getTrackbarPos("Satulation min", "Capture");
-	int satulation_max = cv::getTrackbarPos("Satulation max", "Capture");
-	int value_min = cv::getTrackbarPos("Value min", "Capture");
-	int value_max = cv::getTrackbarPos("Value max", "Capture");
-
-	colorExtraction(&frame, &dst, CV_BGR2HSV, hue_min, hue_max, satulation_min, satulation_max, value_min, value_max); //色抽出
-	cv::imshow("Capture", dst);
-	cv::waitKey(10);
-
 }
+
+#ifdef USE_CAPTURE
+//認識部分を別スレッドで行う
+static void cv_update()
+{
+	//イベントループ
+	while(true)
+	{
+		//カメラデータの取得
+		cv::Mat frame;
+		cv::Mat dst;
+		cap >> frame;
+		int hue_min = cv::getTrackbarPos("Hue min", "Capture");
+		int hue_max = cv::getTrackbarPos("Hue max", "Capture");
+		int satulation_min = cv::getTrackbarPos("Satulation min", "Capture");
+		int satulation_max = cv::getTrackbarPos("Satulation max", "Capture");
+		int value_min = cv::getTrackbarPos("Value min", "Capture");
+		int value_max = cv::getTrackbarPos("Value max", "Capture");
+
+		colorExtraction(&frame, &dst, CV_BGR2HSV, hue_min, hue_max, satulation_min, satulation_max, value_min, value_max); //色抽出
+		cv_tex = std::move(dst);
+
+		cv::imshow("Capture", cv_tex);
+		cv::waitKey(10); //イベント処理
+
+		{
+			std::lock_guard<std::mutex> lock(mtx);
+			if(flag_exit)
+			{
+				break;
+			}
+		}
+	}
+}
+#endif
+
 
 int main(int argc, char *argv[])
 {
@@ -104,32 +159,7 @@ int main(int argc, char *argv[])
 	glutInitWindowSize(w, h);
 	glutCreateWindow("osakana_prj");
 	//
-	glEnable(GL_DEPTH_TEST);
-/*
-// /* -- 3D --
-	//射影行列を設定
-	glMatrixMode(GL_PROJECTION);
-	//単位行列に初期化
-	glLoadIdentity();
-	//視界の設定
-	gluPerspective(60.0, (double)w / h, 0.1, 1000.0);
-	//視点
-	gluLookAt(
-		320.0, 0.0, 500.0, // 視点の位置x,y,z;
-		320.0, 320.0, 0.0,   // 視界の中心位置の参照点座標x,y,z
-		0.0, 0.0, 1.0);  //視界の上方向のベクトルx,y,z
-// */
-
-/* -- 2D --
-	//射影行列を設定
-	glMatrixMode(GL_PROJECTION);
-	//単位行列に初期化
-	glLoadIdentity();
-	//画面の座標をワールド座標に対応
-	glOrtho(0.0, w, h, 0.0, -1.0, 1.0);
-	//ビューポート変換
-	glViewport(0, 0, w, h);
-*/
+//	glEnable(GL_DEPTH_TEST);
 	//クリアカラーの設定（水色）
 	glClearColor(240.0 / 255, 248.0 / 255, 1.0, 0);
 	//各コールバック関数の設定
@@ -153,9 +183,9 @@ int main(int argc, char *argv[])
 	glShadeModel(GL_SMOOTH);
 	//両面表示
 	glEnable(GL_CULL_FACE);
-
+	//時間記録
 	last_time = std::chrono::system_clock::now();
-
+	//バージョン表示（デバッグ）
 	printf("version : %s\n", glGetString(GL_VERSION));
 
 	// GLEW初期化
@@ -168,7 +198,7 @@ int main(int argc, char *argv[])
 
 	p_world = new World(w, h);
 
-
+#ifdef USE_CAPTURE
 	//--OpenCVの設定--
 	//カメラの設定
 	cap.set(CV_CAP_PROP_FRAME_WIDTH, 640);
@@ -183,8 +213,19 @@ int main(int argc, char *argv[])
 	cv::createTrackbar("Satulation max", "Capture", &slider_value, 180);
 	cv::createTrackbar("Value min", "Capture", &slider_value, 180);
 	cv::createTrackbar("Value max", "Capture", &slider_value, 180);
+
+	//CVは非同期処理
+	auto fut_cv = std::async(std::launch::async, []{ cv_update(); });
+#endif
+
 	//メインループの実行
 	glutMainLoop();
+
+	//終了処理（ただしGLUTだと無意味）
+	{
+		std::lock_guard<std::mutex> lock(mtx);
+		flag_exit = true; //終了
+	}
 
 	return 0;
 }

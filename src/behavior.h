@@ -1,6 +1,6 @@
 ﻿
 
-#include <list>
+#include <vector>
 #include "vec2d.h"
 
 class Fish;
@@ -16,11 +16,11 @@ public:
 	Behavior() : rw_rad(0.0){}
 
 	//分離行動
-	vec2d separation(Fish* self, World* p_world, std::list<Fish*>& neighbors);
+	vec2d separation(Fish* self, World* p_world, std::vector<Fish*>& neighbors);
 	//整列行動
-	vec2d alignment(Fish* self, World* p_world, std::list<Fish*>& neighbors);
+	vec2d alignment(Fish* self, World* p_world, std::vector<Fish*>& neighbors);
 	//結合行動
-	vec2d cohesion(Fish* self, World* p_world, std::list<Fish*>& neighbors);
+	vec2d cohesion(Fish* self, World* p_world, std::vector<Fish*>& neighbors);
 	//追従行動
 	vec2d seek(Fish* self, World* p_world, Fish* target);
 	//逃避行動

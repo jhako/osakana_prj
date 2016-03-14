@@ -3,6 +3,7 @@
 #define WORLD_H
 
 #include <vector>
+//#include <list>
 #include <map>
 #include <memory>
 #include <GL/glut.h>
@@ -14,7 +15,8 @@ class Shark;
 class Target;
 class MyShader;
 class TexImage;
-class MyShader;
+class FishLoader;
+class WaterSurface;
 
 
 //--魚等の管理クラス--
@@ -31,41 +33,35 @@ class World
 
 	//魚が集まる場所
 	std::vector<Target*> targets;
-
-	//水面を表現する頂点データ（z値）
-	std::vector<std::vector<double>>		surf_vertex_z[3];
-
-	//シェーダ
-	std::unique_ptr<MyShader>	water_shader;
-	std::unique_ptr<MyShader>	caustics_shader;
-
-	//キューブマッピング用テクスチャ
-	GLuint		cube_tex;
-	//フレームバッファ
-	GLuint		frame_buf;
-	//バッファ記録用
-	std::vector<unsigned char>	buffer_data;
-	//unsigned char*	buffer_data;
-	GLuint		buf_tex;
-	//法線マップ
-	std::vector<unsigned char>	normal_data;
-	GLuint		normal_map;
-	//コースティクスマップ
-//	std::vector<unsigned char>	caustics_data;
-	GLuint	caustics_map;
-
+	
 	//マウス用
 	vec2d	mouse_pos;
 	bool	mouse_state = false; //押されているかどうか
+
+	//ステップカウンタ
+	unsigned int step = 0;
+
+	//魚ローダー
+	std::unique_ptr<FishLoader>	fish_loader;
+
+	//フレームバッファ
+	GLuint		frame_buf;
+	//水中テクスチャ
+	GLuint		underwater_tex;
+
+	//水面
+	std::unique_ptr<WaterSurface> water_surface;
 
 public:
 	World(int w, int h);
 	~World();
 
 	void update();
+	void opengl_update(); //OPENGL関連の処理
 	void render();
 
-	void draw_water_surface();
+	//エンティティ(魚・ターゲット)のアップデート
+	void update_entities();
 
 	//アクセサ
 	std::vector<Shark*>& get_sharks(){ return sharks; }
@@ -76,6 +72,7 @@ public:
 	int get_height(){ return height; }
 	void	set_mouse_pos(vec2d mp){ mouse_pos = mp; }
 	void	set_mouse_state(bool ms){ mouse_state = ms; }
+	void	add_fish_to_world(Fish* fish);
 };
 
 

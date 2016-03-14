@@ -32,6 +32,8 @@
 !/build/*.png
 !/build/*.fs
 !/build/*.vs
+!/build/newfish/
+!/build/shader/
 
 # For OSX
 .DS_Store

@@ -44,14 +44,31 @@ include_directories(
 
 add_executable (osakana_prj
 	src/main.cpp
+	src/vec2d.h
+	src/vec3d.h
 	src/behavior.cpp
+	src/behavior.h
 	src/fish.cpp
+	src/fish.h
 	src/shark.cpp
+	src/shark.h
 	src/world.cpp
+	src/world.h
 	src/teximage.cpp
+	src/teximage.h
 	src/target.cpp
+	src/target.h
 	src/shader.cpp
+	src/shader.h
 	src/vision.cpp
+	src/vision.h
+	src/fish_loader.cpp
+	src/fish_loader.h
+	src/water_surface.h
+	src/water_surface_cpu.cpp
+	src/water_surface_gpu_swe.cpp
+	
+	src/win/dirent.h
 )
 
 
