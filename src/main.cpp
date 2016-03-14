@@ -14,7 +14,7 @@
 World* p_world;
 
 //FPS（フレーム更新数）
-const int FPS_micro = 1000000.0 / 60; //60 FPS
+const int FPS_micro = 1000000.0 / 50; //50 FPS
 std::chrono::time_point<std::chrono::system_clock> last_time;
 
 //OpenCV用
@@ -65,34 +65,35 @@ static void motion(int x, int y)
 
 static void update()
 {
-	////for debug
-	//static int debug_step = 0; const int DCount = 10;
-	//static std::chrono::time_point<std::chrono::system_clock> start_t, end_t;
-	//if(debug_step == 0)
-	//	start_t = std::chrono::system_clock::now();
 
-	//Worldのアップデート（マルチタスクで実行）
-	auto fut_world = std::async([]{ p_world->update(); });
-//	p_world->update();
+	//for debug
+	static int debug_step = 0; const int DCount = 10;
+	static std::chrono::time_point<std::chrono::system_clock> start_t, end_t;
+	if(debug_step == 0)
+		start_t = std::chrono::system_clock::now();
+
+
+	//Worldのアップデート
+	p_world->update();
 
 	//更新のたびに再描画を行う
 	glutPostRedisplay();
 
-	//タスクの終了待機
-	fut_world.get();
-
 	//GL関連のアップデート
 	p_world->opengl_update();
 
-	////for debug
-	//if(debug_step == DCount)
-	//{
-	//	end_t = std::chrono::system_clock::now();
-	//	std::cout << "TS : " << std::chrono::duration_cast<std::chrono::milliseconds>(end_t - start_t).count() << "\n";
-	//	debug_step = 0;
-	//}
-	//else
-	//	++debug_step;
+
+	//for debug
+	if(debug_step == DCount)
+	{
+		end_t = std::chrono::system_clock::now();
+		auto ts = std::chrono::duration_cast<std::chrono::milliseconds>(end_t - start_t).count();
+		std::cout << "time-span : " << ts << ",  FPS : " << 1000.0 * DCount / ts << std::endl;
+		debug_step = 0;
+	}
+	else
+		++debug_step;
+
 
 	auto current_time = std::chrono::system_clock::now();
 
@@ -103,6 +104,7 @@ static void update()
 		std::this_thread::sleep_for(std::chrono::microseconds(FPS_micro - duration));
 	}
 	last_time = current_time;
+
 }
 
 #ifdef USE_CAPTURE
@@ -157,7 +159,7 @@ int main(int argc, char *argv[])
 	glutInitWindowSize(w, h);
 	glutCreateWindow("osakana_prj");
 	//
-	glEnable(GL_DEPTH_TEST);
+//	glEnable(GL_DEPTH_TEST);
 	//クリアカラーの設定（水色）
 	glClearColor(240.0 / 255, 248.0 / 255, 1.0, 0);
 	//各コールバック関数の設定

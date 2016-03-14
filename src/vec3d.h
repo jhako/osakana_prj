@@ -73,7 +73,7 @@ struct vec3d
 	}
 };
 
-vec3d cross_vec3d(const vec3d& v1, const vec3d& v2)
+inline vec3d cross_vec3d(const vec3d& v1, const vec3d& v2)
 {
 	return vec3d(
 		-v1.y*v2.z + v1.z*v1.y,

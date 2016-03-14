@@ -13,19 +13,19 @@ varying vec3 vPosW;
  
 void main(void)
 {
-	//’¸“_ˆÊ’uC’¸“_–@ü‚Ìİ’è
+	//é ‚ç‚¹ä½ç½®ï¼Œé ‚ç‚¹æ³•ç·šã®è¨­å®š
     vPos = gl_ModelViewMatrix * gl_Vertex;
     vNrm = normalize(gl_NormalMatrix*gl_Normal);
  
-	//‹“_‚ÌˆÊ’u‚Ìİ’è
+	//è¦–ç‚¹ã®ä½ç½®ã®è¨­å®š
 //	eye = (gl_ModelViewMatrix * vec4(eyePosition, 1.0)).xyz;
 	
-	//ƒ[ƒ‹ƒhÀ•W‚ğ‹L˜^
+	//ãƒ¯ãƒ¼ãƒ«ãƒ‰åº§æ¨™ã‚’è¨˜éŒ²
 	vPosW = gl_Vertex.xyz;
 //	vNrmW = normalize(gl_Normal);
 //	ePosW = eyePosition;
  
-    // •`‰æ’¸“_ˆÊ’u
+    // æç”»é ‚ç‚¹ä½ç½®
     gl_Position = ftransform();
 	gl_TexCoord[0] = gl_MultiTexCoord0;
 }

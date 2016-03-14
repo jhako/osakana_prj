@@ -9,52 +9,89 @@
 
 #include "shader.h"
 
-MyShader::MyShader(const char * vtxShdName, const char * frgShdName)
+MyShader::MyShader(
+	const char* vtxShdName,
+	const char* frgShdName,
+	const char* tessConShdName,
+	const char* tessEvaShdName,
+	const char* geoShdName)
 {
-	load_shader(vtxShdName, frgShdName);
+	load_shader(vtxShdName, frgShdName, tessConShdName, tessEvaShdName, geoShdName);
 }
 
-int MyShader::load_shader(const char * vtxShdName, const char * frgShdName)
+int MyShader::load_shader(
+	const char* vtxShdName,
+	const char* frgShdName,
+	const char* tessConShdName,
+	const char* tessEvaShdName,
+	const char* geoShdName)
 {
 	GLuint vtxShader;
 	GLuint frgShader;
+	GLuint tessConShader;
+	GLuint tessEvaShader;
+	GLuint geoShader;
 	GLuint prog;
 	GLint linked;
 
-	/* シェーダオブジェクトの作成 */
-	vtxShader = glCreateShader(GL_VERTEX_SHADER);
-	frgShader = glCreateShader(GL_FRAGMENT_SHADER);
+	// プログラムオブジェクトの作成
+	prog = glCreateProgram();
 
-	/* バーテックスシェーダのロードとコンパイル */
+	//シェーダオブジェクトの作成＆コンパイル＆登録＆削除
+	vtxShader = glCreateShader(GL_VERTEX_SHADER);
 	if(load_and_compile(vtxShader, vtxShdName) < 0)
 	{
 		return -1;
 	}
+	glAttachShader(prog, vtxShader);
+	glDeleteShader(vtxShader);
 
-	/* フラグメントシェーダのロードとコンパイル */
+	frgShader = glCreateShader(GL_FRAGMENT_SHADER);
 	if(load_and_compile(frgShader, frgShdName) < 0)
 	{
 		return -1;
 	}
-
-	/* プログラムオブジェクトの作成 */
-	prog = glCreateProgram();
-
-	/* シェーダオブジェクトのシェーダプログラムへの登録 */
-	glAttachShader(prog, vtxShader);
 	glAttachShader(prog, frgShader);
-
-	/* シェーダオブジェクトの削除 */
-	glDeleteShader(vtxShader);
 	glDeleteShader(frgShader);
 
-	/* シェーダプログラムのリンク */
+	if(tessConShdName != nullptr)
+	{
+		tessConShader = glCreateShader(GL_TESS_CONTROL_SHADER);
+		if(load_and_compile(tessConShader, tessConShdName) < 0)
+		{
+			return -1;
+		}
+		glAttachShader(prog, tessConShader);
+		glDeleteShader(tessConShader);
+	}
+	if(tessEvaShdName != nullptr)
+	{
+		tessEvaShader = glCreateShader(GL_TESS_EVALUATION_SHADER);
+		if(load_and_compile(tessEvaShader, tessEvaShdName) < 0)
+		{
+			return -1;
+		}
+		glAttachShader(prog, tessEvaShader);
+		glDeleteShader(tessEvaShader);
+	}
+	if(geoShdName != nullptr)
+	{
+		geoShader = glCreateShader(GL_GEOMETRY_SHADER);
+		if(load_and_compile(geoShader, geoShdName) < 0)
+		{
+			return -1;
+		}
+		glAttachShader(prog, geoShader);
+		glDeleteShader(geoShader);
+	}
+
+	// シェーダプログラムのリンク 
 	glLinkProgram(prog);
 	glGetProgramiv(prog, GL_LINK_STATUS, &linked);
 	printProgramInfoLog(prog);
 	if(linked == GL_FALSE)
 	{
-		fprintf(stderr, "Link error of %s & %s!!\n", vtxShdName, frgShdName);
+		fprintf(stderr, "Link error of %s & %s or other shaders!!\n", vtxShdName, frgShdName);
 		return -1;
 	}
 
@@ -101,6 +138,7 @@ int MyShader::load_and_compile(GLuint shader, const char * name)
 
 	/* シェーダのコンパイル */
 	glCompileShader(shader);
+	fprintf(stderr, "%s has been compiled. \n", name);
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
 	printShaderInfoLog(shader);		/* コンパイルログの出力 */
 	if(compiled == GL_FALSE)

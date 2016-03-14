@@ -15,8 +15,8 @@ class Shark;
 class Target;
 class MyShader;
 class TexImage;
-class MyShader;
 class FishLoader;
+class WaterSurface;
 
 
 //--魚等の管理クラス--
@@ -33,24 +33,7 @@ class World
 
 	//魚が集まる場所
 	std::vector<Target*> targets;
-
-	//水面を表現する頂点データ（z値）
-	std::vector<std::vector<double>>		surf_vertex_z[3];
-
-	//シェーダ
-	std::unique_ptr<MyShader>	water_shader;
-	std::unique_ptr<MyShader>	caustics_shader;
-
-	//キューブマッピング用テクスチャ
-	GLuint		cube_tex;
-	//フレームバッファ
-	GLuint		frame_buf;
-	//水中バッファ記録用
-	std::vector<unsigned char>	buffer_data;
-	GLuint		buf_tex;
-	//コースティクスマップ
-	GLuint	caustics_map;
-
+	
 	//マウス用
 	vec2d	mouse_pos;
 	bool	mouse_state = false; //押されているかどうか
@@ -60,6 +43,14 @@ class World
 
 	//魚ローダー
 	std::unique_ptr<FishLoader>	fish_loader;
+
+	//フレームバッファ
+	GLuint		frame_buf;
+	//水中テクスチャ
+	GLuint		underwater_tex;
+
+	//水面
+	std::unique_ptr<WaterSurface> water_surface;
 
 public:
 	World(int w, int h);
@@ -71,10 +62,6 @@ public:
 
 	//エンティティ(魚・ターゲット)のアップデート
 	void update_entities();
-	//水面の計算
-	void calc_water_surface();
-	//水面描画
-	void draw_water_surface();
 
 	//アクセサ
 	std::vector<Shark*>& get_sharks(){ return sharks; }

@@ -64,6 +64,9 @@ add_executable (osakana_prj
 	src/vision.h
 	src/fish_loader.cpp
 	src/fish_loader.h
+	src/water_surface.h
+	src/water_surface_cpu.cpp
+	src/water_surface_gpu_swe.cpp
 	
 	src/win/dirent.h
 )

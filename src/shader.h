@@ -3,15 +3,20 @@
 #pragma once
 
 
-
-
-
 class MyShader
 {
 public:
-	MyShader(const char* vtxShdName, const char* frgShdName);
+	MyShader(const char* vtxShdName,
+		const char* frgShdName,
+		const char* tessConShdName = nullptr,
+		const char* tessEvaShdName = nullptr,
+		const char* geoShdName = nullptr);
 
-	int load_shader(const char* vtxShdName, const char* frgShdName);
+	int load_shader(const char* vtxShdName,
+		const char* frgShdName,
+		const char* tessConShdName = nullptr,
+		const char* tessEvaShdName = nullptr,
+		const char* geoShdName = nullptr);
 
 	GLuint get_prog() const { return lpProg; }
 
@@ -23,3 +28,4 @@ private:
 	void printProgramInfoLog(GLuint program);
 	void printShaderInfoLog(GLuint shader);
 };
+
