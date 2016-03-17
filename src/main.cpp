@@ -91,7 +91,8 @@ static void update()
 	if(p_pers->get_vector_size() == 4){
 	  p_pers->perspective(&frame, &tmp_frame); //透視変換
 	  colorExtraction(&tmp_frame, &dst, CV_BGR2HSV, hue_min, hue_max, satulation_min, satulation_max, value_min, value_max);//色抽出
-	  cv::imshow("Capture", dst);
+	  cv::imshow("Destination", dst);
+	  cv::imshow("Capture", frame);
 	}else{
 	  cv::imshow("Capture", frame);
 	}
@@ -193,14 +194,16 @@ int main(int argc, char *argv[])
 	if(!cap.isOpened()) return -1;
 	//ウィンドウの作成
 	cv::namedWindow("Capture", CV_WINDOW_AUTOSIZE | CV_WINDOW_FREERATIO);
+	cv::namedWindow("Destination", CV_WINDOW_AUTOSIZE | CV_WINDOW_FREERATIO);
 	//トラックバーの作成
-	int slider_value = 50;
-	cv::createTrackbar("Hue min", "Capture", &slider_value, 180);
-	cv::createTrackbar("Hue max", "Capture", &slider_value, 180);
-	cv::createTrackbar("Satulation min", "Capture", &slider_value, 180);
-	cv::createTrackbar("Satulation max", "Capture", &slider_value, 180);
-	cv::createTrackbar("Value min", "Capture", &slider_value, 180);
-	cv::createTrackbar("Value max", "Capture", &slider_value, 180);
+	int slider_value_low = 0;
+	int slider_value_high = 180;
+	cv::createTrackbar("Hue min", "Capture", &slider_value_low, 180);
+	cv::createTrackbar("Hue max", "Capture", &slider_value_high, 180);
+	cv::createTrackbar("Satulation min", "Capture", &slider_value_low, 180);
+	cv::createTrackbar("Satulation max", "Capture", &slider_value_high, 180);
+	cv::createTrackbar("Value min", "Capture", &slider_value_low, 180);
+	cv::createTrackbar("Value max", "Capture", &slider_value_high, 180);
 
 	//マウスコールバックの設定
 	//cv::setMouseCallback("Capture", p_pers->onMouse, 0);

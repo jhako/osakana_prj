@@ -113,7 +113,7 @@ void Pers::perspective(cv::Mat* src, cv::Mat* dst)
     // 透視変換行列を計算
     cv::Mat perspective_matrix = cv::getPerspectiveTransform(pts1, pts2);
     // 変換
-    cv::warpPerspective(*src, *dst, perspective_matrix, (*src).size(), cv::INTER_LINEAR);
+    cv::warpPerspective(*src, *dst, perspective_matrix, (*dst).size(), cv::INTER_LINEAR);
   }  
   return;
 }
