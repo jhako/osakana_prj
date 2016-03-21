@@ -42,6 +42,7 @@ void colorExtraction(cv::Mat* src, cv::Mat* dst,
 		     int ch3Lower, int ch3Upper
 		     )
 {
+  
   cv::Mat colorImage;
   int lower[3];
   int upper[3];
@@ -104,11 +105,13 @@ int Pers::get_vector_size(){
   return pos_x.size();
 }
 
+
 void Pers::perspective(cv::Mat* src, cv::Mat* dst)
 {
+  std::cout << src->cols << " "  << src->rows << std::endl;
   if(get_vector_size() == 4){
     cv::Point2f pts1[] = {cv::Point2f(pos_x[0],pos_y[0]),cv::Point2f(pos_x[1],pos_y[1]),cv::Point2f(pos_x[2],pos_x[2]),cv::Point2f(pos_x[3],pos_y[3])};
-    cv::Point2f pts2[] = {cv::Point2f(0,0),cv::Point2f(300,0),cv::Point2f(300,300),cv::Point2f(0,300)};
+    cv::Point2f pts2[] = {cv::Point2f(0,0),cv::Point2f(640,0),cv::Point2f(640,1920),cv::Point2f(0,480)};
     
     // 透視変換行列を計算
     cv::Mat perspective_matrix = cv::getPerspectiveTransform(pts1, pts2);
@@ -117,6 +120,26 @@ void Pers::perspective(cv::Mat* src, cv::Mat* dst)
   }  
   return;
 }
+
+
+/*
+void Pers::perspective(cv::Mat* src, cv::Mat* dst)
+{
+  //変換元座標設定
+  float srcPoint[] = new float[]{52, 38, 18, 296, 474, 293, 446, 58};
+  cv::Mat srcPointMat = new cv::Mat(4,2,CvType.CV_32F);
+  srcPointMat.put(0, 0,srcPoint );
+  //変換先座標設定
+  float dstPoint[] = new float[]{18, 38, 18, 296, 474, 296, 474, 38 };
+  cv::Mat dstPointMat = new cv::Mat(4,2,CvType.CV_32F);
+  dstPointMat.put(0, 0,dstPoint);
+  //変換行列作成
+  cv::Mat r_mat = Imgproc.getPerspectiveTransform(srcPointMat, dstPointMat);
+  //図形変換処理
+  //Mat dstMat = new Mat(mat.rows(),mat.cols(),mat.type());
+  Imgproc.warpPerspective(*src, *dst, r_mat, dstMat.size(),Imgproc.INTER_LINEAR);
+}
+*/
   
 void Pers::onMouse(int event, int x, int y, int flag, void*)
 {
