@@ -227,7 +227,7 @@ WaterSurfaceGPU_SWE::WaterSurfaceGPU_SWE(double w, double h)
 
 
 	//行列の設定
-///*
+/*
 	//--2D
 	proj = glm::perspective<float>(glm::radians(90.0), (float)width / height, 0.1, 10);
 	gluLookAt(width / 2.0, height / 2.0, height / 2.0, width / 2.0, height / 2.0, 0.0, 0.0, 1.0, 0.0);
@@ -235,9 +235,9 @@ WaterSurfaceGPU_SWE::WaterSurfaceGPU_SWE(double w, double h)
 		glm::vec3(0.0, 0.0, H + 1.0),
 		glm::vec3(0.0, 0.0, H),
 		glm::vec3(0.0, 1.0, 0.0));
-//*/
+*/
 	//--3D
-/*
+///*
 	proj = glm::perspective<float>(glm::radians(60.0), (float)width / height, 0.1, 10);
 	static double t = 0.0;
 	const double r = 3.0;
@@ -251,7 +251,7 @@ WaterSurfaceGPU_SWE::WaterSurfaceGPU_SWE(double w, double h)
 		glm::vec3(0.0, 0.0, H),
 		glm::vec3(0.0, 0.0, 1.0));
 	t += 0.01;
-*/
+//*/
 	normalm = glm::transpose(glm::inverse(glm::mat3(modelv)));
 }
 

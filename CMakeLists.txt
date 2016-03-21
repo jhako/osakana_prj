@@ -79,7 +79,8 @@ target_link_libraries(osakana_prj
 	${GLEW_LIBRARIES}
 )
 
-target_compile_features(osakana_prj PRIVATE cxx_range_for)
+set_property(TARGET osakana_prj PROPERTY CXX_STANDARD 14)
+set_property(TARGET osakana_prj PROPERTY CXX_STANDARD_REQUIRED ON)
 
 IF(UNIX)
 	set(CMAKE_CXX_FLAGS "-g")
