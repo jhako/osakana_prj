@@ -57,25 +57,25 @@ std::vector<Fish*> FishLoader::load_fish()
 		closedir(p_dir);
 	}
 
-	for(auto& file : file_list)
-	{
-		std::cout << file.c_str() << std::endl;
-	}
+	//for(auto& file : file_list)
+	//{
+	//	std::cout << file.c_str() << std::endl;
+	//}
 
 	auto begin = file_list.begin();
 	auto end = std::remove_if(file_list.begin(), file_list.end(),
 		[&](const std::string& str){ return str.find(".png") == std::string::npos; }
 	);
-	puts("---");
+	//puts("---");
 	for(auto it = begin; it != end; ++it)
 	{
-		std::cout << it->c_str() << std::endl;
+		//std::cout << it->c_str() << std::endl;
 		//まだ追加されていない
 		if(file_history.find(*it) == file_history.end())
 		{
 			//ファイル名を作成
 			std::string fn = dir + "/" + (*it);
-			std::cout << "add : " << fn.c_str() << std::endl;
+			//std::cout << "add : " << fn.c_str() << std::endl;
 			//テクスチャの作成
 			texture_list.push_back(new TexImage(fn.c_str()));
 			//魚追加
