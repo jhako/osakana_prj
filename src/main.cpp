@@ -13,6 +13,9 @@
 //Worldの実体（updateとdisplayで使うためグローバル）
 World* p_world;
 
+//Perspectiveの実体
+Pers *p_pers;
+
 //FPS（フレーム更新数）
 const int FPS_micro = 1000000.0 / 50; //50 FPS
 std::chrono::time_point<std::chrono::system_clock> last_time;
@@ -65,13 +68,13 @@ static void motion(int x, int y)
 
 static void update()
 {
-
+/*
 	//for debug
 	static int debug_step = 0; const int DCount = 10;
 	static std::chrono::time_point<std::chrono::system_clock> start_t, end_t;
 	if(debug_step == 0)
 		start_t = std::chrono::system_clock::now();
-
+*/
 
 	//Worldのアップデート
 	p_world->update();
@@ -82,7 +85,7 @@ static void update()
 	//GL関連のアップデート
 	p_world->opengl_update();
 
-
+/*
 	//for debug
 	if(debug_step == DCount)
 	{
@@ -93,7 +96,7 @@ static void update()
 	}
 	else
 		++debug_step;
-
+*/
 
 	auto current_time = std::chrono::system_clock::now();
 
@@ -104,7 +107,6 @@ static void update()
 		std::this_thread::sleep_for(std::chrono::microseconds(FPS_micro - duration));
 	}
 	last_time = current_time;
-
 }
 
 #ifdef USE_CAPTURE
@@ -116,8 +118,11 @@ static void cv_update()
 	{
 		//カメラデータの取得
 		cv::Mat frame;
+		cv::Mat tmp_frame;
 		cv::Mat dst;
 		cap >> frame;
+
+		//トラックバーの値の取得
 		int hue_min = cv::getTrackbarPos("Hue min", "Capture");
 		int hue_max = cv::getTrackbarPos("Hue max", "Capture");
 		int satulation_min = cv::getTrackbarPos("Satulation min", "Capture");
@@ -125,11 +130,16 @@ static void cv_update()
 		int value_min = cv::getTrackbarPos("Value min", "Capture");
 		int value_max = cv::getTrackbarPos("Value max", "Capture");
 
-		colorExtraction(&frame, &dst, CV_BGR2HSV, hue_min, hue_max, satulation_min, satulation_max, value_min, value_max); //色抽出
-		cv_tex = std::move(dst);
-
-		cv::imshow("Capture", cv_tex);
-		cv::waitKey(10); //イベント処理
+		if(p_pers->get_vector_size() == 4){
+			p_pers->perspective(&frame, &tmp_frame); //透視変換
+			colorExtraction(&tmp_frame, &dst, CV_BGR2HSV, hue_min, hue_max, satulation_min, satulation_max, value_min, value_max);//色抽出
+			cv::imshow("Destination", dst);
+			cv::imshow("Capture", frame);
+		}
+		else{
+			cv::imshow("Capture", frame);
+		}
+		cv::waitKey(10);
 
 		{
 			std::lock_guard<std::mutex> lock(mtx);
@@ -142,6 +152,12 @@ static void cv_update()
 }
 #endif
 
+
+static void cv_onMouse(int event, int x, int y, int flag, void* param)
+{
+  Pers* pers = static_cast<Pers*>(param);
+  pers->onMouse(event, x, y, flag, nullptr);
+}
 
 int main(int argc, char *argv[])
 {
@@ -199,6 +215,8 @@ int main(int argc, char *argv[])
 	p_world = new World(w, h);
 
 #ifdef USE_CAPTURE
+	p_pers = new Pers();
+
 	//--OpenCVの設定--
 	//カメラの設定
 	cap.set(CV_CAP_PROP_FRAME_WIDTH, 640);
@@ -206,15 +224,22 @@ int main(int argc, char *argv[])
 	if(!cap.isOpened()) return -1;
 	//ウィンドウの作成
 	cv::namedWindow("Capture", CV_WINDOW_AUTOSIZE | CV_WINDOW_FREERATIO);
-	int slider_value = 50;
-	cv::createTrackbar("Hue min", "Capture", &slider_value, 180);
-	cv::createTrackbar("Hue max", "Capture", &slider_value, 180);
-	cv::createTrackbar("Satulation min", "Capture", &slider_value, 180);
-	cv::createTrackbar("Satulation max", "Capture", &slider_value, 180);
-	cv::createTrackbar("Value min", "Capture", &slider_value, 180);
-	cv::createTrackbar("Value max", "Capture", &slider_value, 180);
+	cv::namedWindow("Destination", CV_WINDOW_AUTOSIZE | CV_WINDOW_FREERATIO);
+	//トラックバーの作成
+	int slider_value_low = 0;
+	int slider_value_high = 180;
+	cv::createTrackbar("Hue min", "Capture", &slider_value_low, 180);
+	cv::createTrackbar("Hue max", "Capture", &slider_value_high, 180);
+	cv::createTrackbar("Satulation min", "Capture", &slider_value_low, 180);
+	cv::createTrackbar("Satulation max", "Capture", &slider_value_high, 180);
+	cv::createTrackbar("Value min", "Capture", &slider_value_low, 180);
+	cv::createTrackbar("Value max", "Capture", &slider_value_high, 180);
 
-	//CVは非同期処理
+	//マウスコールバックの設定
+	//cv::setMouseCallback("Capture", p_pers->onMouse, 0);
+	cv::setMouseCallback("Capture", cv_onMouse, p_pers);
+
+	//OpenCVは非同期処理
 	auto fut_cv = std::async(std::launch::async, []{ cv_update(); });
 #endif
 
