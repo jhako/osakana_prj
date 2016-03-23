@@ -93,6 +93,8 @@ static void update()
 	  colorExtraction(&tmp_frame, &dst, CV_BGR2HSV, hue_min, hue_max, satulation_min, satulation_max, value_min, value_max);//色抽出
 	  cv::imshow("Destination", dst);
 	  cv::imshow("Capture", frame);
+	  std::cout << dst.cols << " " << dst.rows << std::endl;
+	  //std::cout << p_pers->calc_center(&dst) << std::endl;
 	}else{
 	  cv::imshow("Capture", frame);
 	}

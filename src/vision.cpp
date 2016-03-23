@@ -122,26 +122,7 @@ void Pers::perspective(cv::Mat* src, cv::Mat* dst)
 }
 
 
-/*
-void Pers::perspective(cv::Mat* src, cv::Mat* dst)
-{
-  //変換元座標設定
-  float srcPoint[] = new float[]{52, 38, 18, 296, 474, 293, 446, 58};
-  cv::Mat srcPointMat = new cv::Mat(4,2,CvType.CV_32F);
-  srcPointMat.put(0, 0,srcPoint );
-  //変換先座標設定
-  float dstPoint[] = new float[]{18, 38, 18, 296, 474, 296, 474, 38 };
-  cv::Mat dstPointMat = new cv::Mat(4,2,CvType.CV_32F);
-  dstPointMat.put(0, 0,dstPoint);
-  //変換行列作成
-  cv::Mat r_mat = Imgproc.getPerspectiveTransform(srcPointMat, dstPointMat);
-  //図形変換処理
-  //Mat dstMat = new Mat(mat.rows(),mat.cols(),mat.type());
-  Imgproc.warpPerspective(*src, *dst, r_mat, dstMat.size(),Imgproc.INTER_LINEAR);
-}
-*/
-  
-void Pers::onMouse(int event, int x, int y, int flag, void*)
+  void Pers::onMouse(int event, int x, int y, int flag, void*)
 {
   // マウスイベントを取得
   if(event ==  cv::EVENT_LBUTTONDOWN && pos_x.size() < 4){
@@ -166,5 +147,17 @@ void Pers::printpos()
   return;
 }
 
-
+std::vector<int> Pers::calc_center(cv::Mat* img)
+{
+  std::vector<int> center_pos(2, 0);
+  int x, y, sum;
+  cv::Mat ones_col = cv::Mat::ones(img->cols, 1, CV_8U);
+  cv::Mat ones_row = cv::Mat::ones(img->rows, 1, CV_8U);
+  cv::Mat cols = *img * ones_col;
+  cv::Mat rows = img->t() * ones_row;
+  sum = ((cv::Mat)(cols * ones_row)).at<unsigned char>(0, 0);
+  center_pos[0] = sum;
+  center_pos[1] = sum;
+  return center_pos;
+}
 

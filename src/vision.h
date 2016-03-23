@@ -12,5 +12,6 @@ class Pers{
   void perspective(cv::Mat*, cv::Mat*);
   void onMouse(int, int, int, int, void*);
   void printpos();
+  std::vector<int> calc_center(cv::Mat*);
 };
 
