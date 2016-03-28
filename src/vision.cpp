@@ -108,7 +108,7 @@ int Pers::get_vector_size(){
 
 void Pers::perspective(cv::Mat* src, cv::Mat* dst)
 {
-  std::cout << src->cols << " "  << src->rows << std::endl;
+  //std::cout << src->cols << " "  << src->rows << std::endl;
   if(get_vector_size() == 4){
     cv::Point2f pts1[] = {cv::Point2f(pos_x[0],pos_y[0]),cv::Point2f(pos_x[1],pos_y[1]),cv::Point2f(pos_x[2],pos_x[2]),cv::Point2f(pos_x[3],pos_y[3])};
     cv::Point2f pts2[] = {cv::Point2f(0,0),cv::Point2f(640,0),cv::Point2f(640,2400),cv::Point2f(0,480)};
@@ -129,7 +129,7 @@ void Pers::perspective(cv::Mat* src, cv::Mat* dst)
   pos_x.push_back(x);
   pos_y.push_back(y);
  }
-  printpos();
+  //printpos();
 
   return;
 }
@@ -147,17 +147,19 @@ void Pers::printpos()
   return;
 }
 
-std::vector<int> Pers::calc_center(cv::Mat* img)
+//std::vector<int> calc_center(cv::Mat* img)
+int calc_center(cv::Mat img)
 {
   std::vector<int> center_pos(2, 0);
-  int x, y, sum;
-  cv::Mat ones_col = cv::Mat::ones(img->cols, 1, CV_8U);
-  cv::Mat ones_row = cv::Mat::ones(img->rows, 1, CV_8U);
-  cv::Mat cols = *img * ones_col;
-  cv::Mat rows = img->t() * ones_row;
-  sum = ((cv::Mat)(cols * ones_row)).at<unsigned char>(0, 0);
+  int x, y, sum = 0;
+  cv::Mat ones_col = cv::Mat::ones(img.cols, 1, CV_8UC3);
+  cv::Mat ones_row = cv::Mat::ones(img.rows, 1, CV_8UC3);
+  std::cout << ones_col.cols << " " << ones_col.rows << std::endl;
+  cv::Mat cols = img * ones_col;
+  //cv::Mat rows = img->t() * ones_row;
+  //sum = ((cv::Mat)(cols * ones_row)).at<unsigned char>(0, 0);
   center_pos[0] = sum;
   center_pos[1] = sum;
-  return center_pos;
+  return sum;
 }
 

@@ -79,7 +79,7 @@ static void update()
 	cv::Mat tmp_frame;
 	cv::Mat dst;
 	cap >> frame;
-
+	//std::cout << frame.type() << std::endl;
 	//トラックバーの値の取得
 	int hue_min = cv::getTrackbarPos("Hue min", "Capture");
 	int hue_max = cv::getTrackbarPos("Hue max", "Capture");
@@ -91,10 +91,12 @@ static void update()
 	if(p_pers->get_vector_size() == 4){
 	  p_pers->perspective(&frame, &tmp_frame); //透視変換
 	  colorExtraction(&tmp_frame, &dst, CV_BGR2HSV, hue_min, hue_max, satulation_min, satulation_max, value_min, value_max);//色抽出
+	  std::cout << frame.type() << std::endl;
+	  std::cout << calc_center(dst) << std::endl;
 	  cv::imshow("Destination", dst);
 	  cv::imshow("Capture", frame);
-	  std::cout << dst.cols << " " << dst.rows << std::endl;
-	  //std::cout << p_pers->calc_center(&dst) << std::endl;
+	  //std::cout << dst.cols << " " << dst.rows << std::endl;
+	  //std::cout << p_pers->calc_center(&dst)[0] << std::endl;
 	}else{
 	  cv::imshow("Capture", frame);
 	}
