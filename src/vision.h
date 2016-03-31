@@ -1,7 +1,6 @@
 #include <opencv/cv.h>
 
 void colorExtraction(cv::Mat*, cv::Mat*, int, int, int, int, int, int, int); 
-//void myHoughCircles(
 //std::vector<int> calc_center(cv::Mat*);
 //int calc_center(cv::Mat);
 

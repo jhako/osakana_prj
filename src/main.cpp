@@ -77,7 +77,6 @@ static void update()
 
 	//カメラデータの取得
 	cv::Mat frame;
-	//cv::Mat tmp_frame;
 	cv::Mat dst;
 	cv::Mat dst_gray;
 	cap >> frame;
@@ -206,7 +205,6 @@ int main(int argc, char *argv[])
 	if(!cap.isOpened()) return -1;
 	//ウィンドウの作成
 	cv::namedWindow("Capture", CV_WINDOW_AUTOSIZE | CV_WINDOW_FREERATIO);
-	cv::namedWindow("Destination", CV_WINDOW_AUTOSIZE | CV_WINDOW_FREERATIO);
 	//トラックバーの作成
 	/*
 	int slider_value_low = 0;

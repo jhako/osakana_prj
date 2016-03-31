@@ -110,13 +110,13 @@ void Pers::perspective(cv::Mat* src, cv::Mat* dst)
 {
   //std::cout << src->cols << " "  << src->rows << std::endl;
   if(get_vector_size() == 4){
-    cv::Point2f pts1[] = {cv::Point2f(pos_x[0],pos_y[0]),cv::Point2f(pos_x[1],pos_y[1]),cv::Point2f(pos_x[2],pos_x[2]),cv::Point2f(pos_x[3],pos_y[3])};
-    cv::Point2f pts2[] = {cv::Point2f(0,0),cv::Point2f(640,0),cv::Point2f(640,480),cv::Point2f(0,480)};
+    cv::Point2f pts1[] = {cv::Point2f(pos_x[0],pos_y[0]),cv::Point2f(pos_x[1],pos_y[1]),cv::Point2f(pos_x[2],pos_y[2]),cv::Point2f(pos_x[3],pos_y[3])};
+    cv::Point2f pts2[] = {cv::Point2f(0,0),cv::Point2f(640,0),cv::Point2f(640,640),cv::Point2f(0,640)};
     
     // 透視変換行列を計算
     cv::Mat perspective_matrix = cv::getPerspectiveTransform(pts1, pts2);
     // 変換
-    cv::warpPerspective(*src, *dst, perspective_matrix, (*dst).size(), cv::INTER_LINEAR);
+    cv::warpPerspective(*src, *dst, perspective_matrix, cv::Size(640, 640), cv::INTER_LINEAR);
   }  
   return;
 }
