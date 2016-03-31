@@ -111,7 +111,7 @@ void Pers::perspective(cv::Mat* src, cv::Mat* dst)
   //std::cout << src->cols << " "  << src->rows << std::endl;
   if(get_vector_size() == 4){
     cv::Point2f pts1[] = {cv::Point2f(pos_x[0],pos_y[0]),cv::Point2f(pos_x[1],pos_y[1]),cv::Point2f(pos_x[2],pos_x[2]),cv::Point2f(pos_x[3],pos_y[3])};
-    cv::Point2f pts2[] = {cv::Point2f(0,0),cv::Point2f(640,0),cv::Point2f(640,2400),cv::Point2f(0,480)};
+    cv::Point2f pts2[] = {cv::Point2f(0,0),cv::Point2f(640,0),cv::Point2f(640,480),cv::Point2f(0,480)};
     
     // 透視変換行列を計算
     cv::Mat perspective_matrix = cv::getPerspectiveTransform(pts1, pts2);
@@ -148,6 +148,7 @@ void Pers::printpos()
 }
 
 //std::vector<int> calc_center(cv::Mat* img)
+/*
 int calc_center(cv::Mat img)
 {
   std::vector<int> center_pos(2, 0);
@@ -162,4 +163,4 @@ int calc_center(cv::Mat img)
   center_pos[1] = sum;
   return sum;
 }
-
+*/
