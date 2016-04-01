@@ -34,12 +34,18 @@ else ()
 endif ()
 
 find_package(OpenCV REQUIRED)
+
 find_package(GLEW REQUIRED)
+
+set(Boost_USE_STATIC_LIBS ON)
+
+find_package(Boost COMPONENTS system filesystem REQUIRED)
 
 include_directories(
 	${OPENGL_INCLUDE_DIR}
 	${GLUT_INCLUDE_DIR}
 	${GLEW_INCLUDE_DIRS}
+	${Boost_INCLUDE_DIRS}
 )
 
 add_executable (osakana_prj
@@ -67,8 +73,6 @@ add_executable (osakana_prj
 	src/water_surface.h
 	src/water_surface_cpu.cpp
 	src/water_surface_gpu_swe.cpp
-	
-	src/win/dirent.h
 )
 
 
@@ -77,6 +81,7 @@ target_link_libraries(osakana_prj
 	${OPENGL_LIBRARY}
 	${OpenCV_LIBS}
 	${GLEW_LIBRARIES}
+	${Boost_LIBRARIES}
 )
 
 

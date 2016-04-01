@@ -8,11 +8,9 @@
 #include "shark.h"
 #include "teximage.h"
 
-#ifdef _WIN32
-#include "win/dirent.h"
-#else
-#include <direct.h>
-#endif // WIN32
+#include <boost/filesystem/path.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/fstream.hpp>
 
 
 
@@ -45,43 +43,32 @@ std::vector<Fish*> FishLoader::load_fish()
 	file_list.reserve(30); //領域確保
 
 	//ディレクトリ内のファイルをすべてリストに追加
-	auto p_dir = opendir(dir.c_str());
-	if(p_dir != NULL)
+	const boost::filesystem::path path(dir);
+	const auto end = boost::filesystem::directory_iterator();
+	for(auto& p = boost::filesystem::directory_iterator(path); p != end; ++p)
 	{
-		auto dent = readdir(p_dir);
-		while(dent)
+		std::string fn = p->path().filename().string();
+		if(fn.find(".png"))
 		{
-			file_list.push_back(dent->d_name);
-			dent = readdir(p_dir);
+			//std::cout << "found : " << fn << std::endl;
+			file_list.push_back(fn);
 		}
-		closedir(p_dir);
 	}
 
-	//for(auto& file : file_list)
-	//{
-	//	std::cout << file.c_str() << std::endl;
-	//}
-
-	auto begin = file_list.begin();
-	auto end = std::remove_if(file_list.begin(), file_list.end(),
-		[&](const std::string& str){ return str.find(".png") == std::string::npos; }
-	);
-	//puts("---");
-	for(auto it = begin; it != end; ++it)
+	for(auto& it : file_list)
 	{
-		//std::cout << it->c_str() << std::endl;
 		//まだ追加されていない
-		if(file_history.find(*it) == file_history.end())
+		if(file_history.find(it) == file_history.end())
 		{
 			//ファイル名を作成
-			std::string fn = dir + "/" + (*it);
+			std::string fn = dir + "/" + (it);
 			//std::cout << "add : " << fn.c_str() << std::endl;
 			//テクスチャの作成
 			texture_list.push_back(new TexImage(fn.c_str()));
 			//魚追加
 			additions.push_back(new Fish(vec2d(320, 320), vec2d(1, 0), texture_list.back(), 2.3));
 			//履歴に追加
-			file_history.insert(*it);
+			file_history.insert(it);
 		}
 	}
 

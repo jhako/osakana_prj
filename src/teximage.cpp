@@ -45,7 +45,7 @@ void TexImage::load(const char * fn)
 	{
 		alpha = false;
 	}
-	printf("%s : %d, %d\n", fn, img->elemSize(), img->elemSize1());
+	printf("finish loading texture : %s (PB %d, CB %d)\n", fn, img->elemSize(), img->elemSize1());
 }
 
 //cv::Matのデータを用いて、テクスチャとしてOpenGLで描画する
