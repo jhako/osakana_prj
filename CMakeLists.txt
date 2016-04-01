@@ -79,10 +79,8 @@ target_link_libraries(osakana_prj
 	${GLEW_LIBRARIES}
 )
 
-set_property(TARGET osakana_prj PROPERTY CXX_STANDARD 14)
-set_property(TARGET osakana_prj PROPERTY CXX_STANDARD_REQUIRED ON)
 
-IF(UNIX)
-	set(CMAKE_CXX_FLAGS "-g")
+if(NOT MSVC)
+	set(CMAKE_CXX_FLAGS "-g -std=c++14")
 	TARGET_LINK_LIBRARIES(osakana_prj m)
-ENDIF(UNIX)
+endif()

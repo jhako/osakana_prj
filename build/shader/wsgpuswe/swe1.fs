@@ -19,8 +19,8 @@ const float c = 0.3;
 
 vec3 F(vec3 a)
 {
-	if(a.x < 0.000001) return vec3(0.0);
-	else
+//	if(a.x < 0.000001) return vec3(0.0);
+//	else
 	return vec3(a.y,
 				a.y * a.y / a.x + 0.5f * g * a.x * a.x,
 				a.y * a.z / a.x);
@@ -28,8 +28,8 @@ vec3 F(vec3 a)
 
 vec3 G(vec3 a)
 {
-	if(a.x < 0.000001) return vec3(0.0);
-	else
+//	if(a.x < 0.000001) return vec3(0.0);
+//	else
 	return vec3(a.z,
 				a.y * a.z / a.x,
 				a.z * a.z / a.x + 0.5f * g * a.x * a.x);
