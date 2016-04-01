@@ -1,7 +1,8 @@
 #include <opencv/cv.h>
 
 void colorExtraction(cv::Mat*, cv::Mat*, int, int, int, int, int, int, int); 
-
+//std::vector<int> calc_center(cv::Mat*);
+//int calc_center(cv::Mat);
 
 class Pers{
  private:
@@ -12,5 +13,6 @@ class Pers{
   void perspective(cv::Mat*, cv::Mat*);
   void onMouse(int, int, int, int, void*);
   void printpos();
+  //std::vector<int> calc_center(cv::Mat*);
 };
 

@@ -5,6 +5,7 @@
 #include <GL/glut.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 #include <chrono>
 #include <future>
 #include "world.h"
@@ -109,6 +110,7 @@ static void update()
 	last_time = current_time;
 }
 
+
 #ifdef USE_CAPTURE
 //認識部分を別スレッドで行う
 static void cv_update()
@@ -118,23 +120,33 @@ static void cv_update()
 	{
 		//カメラデータの取得
 		cv::Mat frame;
-		cv::Mat tmp_frame;
 		cv::Mat dst;
+		cv::Mat dst_gray;
 		cap >> frame;
+		std::vector<cv::Vec3f> circles;
 
 		//トラックバーの値の取得
+		/*
 		int hue_min = cv::getTrackbarPos("Hue min", "Capture");
 		int hue_max = cv::getTrackbarPos("Hue max", "Capture");
 		int satulation_min = cv::getTrackbarPos("Satulation min", "Capture");
 		int satulation_max = cv::getTrackbarPos("Satulation max", "Capture");
 		int value_min = cv::getTrackbarPos("Value min", "Capture");
 		int value_max = cv::getTrackbarPos("Value max", "Capture");
+		*/
 
 		if(p_pers->get_vector_size() == 4){
-			p_pers->perspective(&frame, &tmp_frame); //透視変換
-			colorExtraction(&tmp_frame, &dst, CV_BGR2HSV, hue_min, hue_max, satulation_min, satulation_max, value_min, value_max);//色抽出
+			p_pers->perspective(&frame, &dst); //透視変換
+			//colorExtraction(&tmp_frame, &dst, CV_BGR2HSV, hue_min, hue_max, satulation_min, satulation_max, value_min, value_max);//色抽出
+			cvtColor(dst, dst_gray, CV_BGR2GRAY);
+			cv::HoughCircles(dst_gray, circles, CV_HOUGH_GRADIENT, 2, 5, 100, 100, 0, 1000);
+			for(auto it = circles.begin(); it != circles.end(); ++it){
+				cv::circle(dst, cv::Point((*it)[0], (*it)[1]), (*it)[2], cv::Scalar(0, 0, 200), 3, 4);
+			}
 			cv::imshow("Destination", dst);
 			cv::imshow("Capture", frame);
+			//std::cout << dst.cols << " " << dst.rows << std::endl;
+			//std::cout << p_pers->calc_center(&dst)[0] << std::endl;
 		}
 		else{
 			cv::imshow("Capture", frame);
@@ -224,8 +236,8 @@ int main(int argc, char *argv[])
 	if(!cap.isOpened()) return -1;
 	//ウィンドウの作成
 	cv::namedWindow("Capture", CV_WINDOW_AUTOSIZE | CV_WINDOW_FREERATIO);
-	cv::namedWindow("Destination", CV_WINDOW_AUTOSIZE | CV_WINDOW_FREERATIO);
 	//トラックバーの作成
+	/*
 	int slider_value_low = 0;
 	int slider_value_high = 180;
 	cv::createTrackbar("Hue min", "Capture", &slider_value_low, 180);
@@ -234,7 +246,7 @@ int main(int argc, char *argv[])
 	cv::createTrackbar("Satulation max", "Capture", &slider_value_high, 180);
 	cv::createTrackbar("Value min", "Capture", &slider_value_low, 180);
 	cv::createTrackbar("Value max", "Capture", &slider_value_high, 180);
-
+	*/
 	//マウスコールバックの設定
 	//cv::setMouseCallback("Capture", p_pers->onMouse, 0);
 	cv::setMouseCallback("Capture", cv_onMouse, p_pers);

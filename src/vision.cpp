@@ -108,47 +108,28 @@ int Pers::get_vector_size(){
 
 void Pers::perspective(cv::Mat* src, cv::Mat* dst)
 {
-  std::cout << src->cols << " "  << src->rows << std::endl;
+  //std::cout << src->cols << " "  << src->rows << std::endl;
   if(get_vector_size() == 4){
-    cv::Point2f pts1[] = {cv::Point2f(pos_x[0],pos_y[0]),cv::Point2f(pos_x[1],pos_y[1]),cv::Point2f(pos_x[2],pos_x[2]),cv::Point2f(pos_x[3],pos_y[3])};
-    cv::Point2f pts2[] = {cv::Point2f(0,0),cv::Point2f(640,0),cv::Point2f(640,1920),cv::Point2f(0,480)};
+    cv::Point2f pts1[] = {cv::Point2f(pos_x[0],pos_y[0]),cv::Point2f(pos_x[1],pos_y[1]),cv::Point2f(pos_x[2],pos_y[2]),cv::Point2f(pos_x[3],pos_y[3])};
+    cv::Point2f pts2[] = {cv::Point2f(0,0),cv::Point2f(640,0),cv::Point2f(640,640),cv::Point2f(0,640)};
     
     // 透視変換行列を計算
     cv::Mat perspective_matrix = cv::getPerspectiveTransform(pts1, pts2);
     // 変換
-    cv::warpPerspective(*src, *dst, perspective_matrix, (*dst).size(), cv::INTER_LINEAR);
+    cv::warpPerspective(*src, *dst, perspective_matrix, cv::Size(640, 640), cv::INTER_LINEAR);
   }  
   return;
 }
 
 
-/*
-void Pers::perspective(cv::Mat* src, cv::Mat* dst)
-{
-  //変換元座標設定
-  float srcPoint[] = new float[]{52, 38, 18, 296, 474, 293, 446, 58};
-  cv::Mat srcPointMat = new cv::Mat(4,2,CvType.CV_32F);
-  srcPointMat.put(0, 0,srcPoint );
-  //変換先座標設定
-  float dstPoint[] = new float[]{18, 38, 18, 296, 474, 296, 474, 38 };
-  cv::Mat dstPointMat = new cv::Mat(4,2,CvType.CV_32F);
-  dstPointMat.put(0, 0,dstPoint);
-  //変換行列作成
-  cv::Mat r_mat = Imgproc.getPerspectiveTransform(srcPointMat, dstPointMat);
-  //図形変換処理
-  //Mat dstMat = new Mat(mat.rows(),mat.cols(),mat.type());
-  Imgproc.warpPerspective(*src, *dst, r_mat, dstMat.size(),Imgproc.INTER_LINEAR);
-}
-*/
-  
-void Pers::onMouse(int event, int x, int y, int flag, void*)
+  void Pers::onMouse(int event, int x, int y, int flag, void*)
 {
   // マウスイベントを取得
   if(event ==  cv::EVENT_LBUTTONDOWN && pos_x.size() < 4){
   pos_x.push_back(x);
   pos_y.push_back(y);
  }
-  printpos();
+  //printpos();
 
   return;
 }
@@ -166,5 +147,20 @@ void Pers::printpos()
   return;
 }
 
-
-
+//std::vector<int> calc_center(cv::Mat* img)
+/*
+int calc_center(cv::Mat img)
+{
+  std::vector<int> center_pos(2, 0);
+  int x, y, sum = 0;
+  cv::Mat ones_col = cv::Mat::ones(img.cols, 1, CV_8UC3);
+  cv::Mat ones_row = cv::Mat::ones(img.rows, 1, CV_8UC3);
+  std::cout << ones_col.cols << " " << ones_col.rows << std::endl;
+  cv::Mat cols = img * ones_col;
+  //cv::Mat rows = img->t() * ones_row;
+  //sum = ((cv::Mat)(cols * ones_row)).at<unsigned char>(0, 0);
+  center_pos[0] = sum;
+  center_pos[1] = sum;
+  return sum;
+}
+*/
