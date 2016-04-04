@@ -94,16 +94,9 @@ static void update()
 
 	if(p_pers->get_vector_size() == 4){
 	  p_pers->perspective(&frame, &dst); //透視変換
-	  //colorExtraction(&tmp_frame, &dst, CV_BGR2HSV, hue_min, hue_max, satulation_min, satulation_max, value_min, value_max);//色抽出
-	  cvtColor(dst, dst_gray, CV_BGR2GRAY); 
-	  cv::HoughCircles(dst_gray, circles, CV_HOUGH_GRADIENT, 2, 5, 100, 100, 0, 1000);
-	  for(auto it = circles.begin(); it != circles.end(); ++it){
-	    cv::circle(dst, cv::Point((*it)[0], (*it)[1]), (*it)[2], cv::Scalar(0, 0, 200), 3, 4); 
-	  }
+	  myHoughCircles(dst, circles, 2, 5, 100, 100, 0, 1000); //円を検出し、表示する
 	  cv::imshow("Destination", dst);
 	  cv::imshow("Capture", frame);
-	  //std::cout << dst.cols << " " << dst.rows << std::endl;
-	  //std::cout << p_pers->calc_center(&dst)[0] << std::endl;
 	}else{
 	  cv::imshow("Capture", frame);
 	}

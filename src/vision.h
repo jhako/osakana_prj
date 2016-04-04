@@ -1,8 +1,7 @@
 #include <opencv/cv.h>
 
 void colorExtraction(cv::Mat*, cv::Mat*, int, int, int, int, int, int, int); 
-//std::vector<int> calc_center(cv::Mat*);
-//int calc_center(cv::Mat);
+void myHoughCircles(cv::Mat&, std::vector<cv::Vec3f>&, double, double, double, double, int, int);
 
 class Pers{
  private:
@@ -13,6 +12,5 @@ class Pers{
   void perspective(cv::Mat*, cv::Mat*);
   void onMouse(int, int, int, int, void*);
   void printpos();
-  //std::vector<int> calc_center(cv::Mat*);
 };
 

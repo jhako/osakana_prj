@@ -147,6 +147,17 @@ void Pers::printpos()
   return;
 }
 
+void myHoughCircles(cv::Mat& img_color, std::vector<cv::Vec3f>& circles, double bp, double minDist, double param1, double param2, int minRadius, int maxRasius){
+  cv::Mat img_gray;
+  cvtColor(img_color, img_gray, CV_BGR2GRAY);
+  cv::HoughCircles(img_gray, circles, CV_HOUGH_GRADIENT, bp, minDist, param1,  param2, minRadius, maxRasius);
+  for(auto it = circles.begin(); it != circles.end(); ++it){
+    cv::circle(img_color, cv::Point((*it)[0], (*it)[1]), (*it)[2], cv::Scalar(0, 0, 200), 3, 4);
+  }
+  return;
+}
+  
+
 //std::vector<int> calc_center(cv::Mat* img)
 /*
 int calc_center(cv::Mat img)
