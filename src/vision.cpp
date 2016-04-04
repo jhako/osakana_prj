@@ -35,12 +35,8 @@ namespace cv
 }
 #endif
 
-void colorExtraction(cv::Mat* src, cv::Mat* dst,
-		     int code,
-		     int ch1Lower, int ch1Upper,
-		     int ch2Lower, int ch2Upper,
-		     int ch3Lower, int ch3Upper
-		     )
+/*
+void colorExtraction(cv::Mat& src, cv::Mat& dst, int code, int ch1Lower, int ch1Upper, int ch2Lower, int ch2Upper, int ch3Lower, int ch3Upper)
 {
   
   cv::Mat colorImage;
@@ -49,7 +45,7 @@ void colorExtraction(cv::Mat* src, cv::Mat* dst,
 
   cv::Mat lut = cv::Mat(256, 1, CV_8UC3);   
 
-  cv::cvtColor(*src, colorImage, code);
+  cv::cvtColor(src, colorImage, code);
 
   lower[0] = ch1Lower;
   lower[1] = ch2Lower;
@@ -92,9 +88,11 @@ void colorExtraction(cv::Mat* src, cv::Mat* dst,
   //出力
   cv::Mat maskedImage;
   src->copyTo(maskedImage, maskImage);
-  *dst = maskedImage;
+  dst = maskedImage;
+  
+  return;
 }
-
+*/
 
 Pers::Pers()
 {
@@ -149,29 +147,11 @@ void Pers::printpos()
 
 void myHoughCircles(cv::Mat& img_color, std::vector<cv::Vec3f>& circles, double bp, double minDist, double param1, double param2, int minRadius, int maxRasius){
   cv::Mat img_gray;
-  cvtColor(img_color, img_gray, CV_BGR2GRAY);
+  cv::cvtColor(img_color, img_gray, CV_BGR2GRAY);
+  cv::GaussianBlur(img_gray, img_gray, cv::Size(9, 9), 2, 2);
   cv::HoughCircles(img_gray, circles, CV_HOUGH_GRADIENT, bp, minDist, param1,  param2, minRadius, maxRasius);
   for(auto it = circles.begin(); it != circles.end(); ++it){
     cv::circle(img_color, cv::Point((*it)[0], (*it)[1]), (*it)[2], cv::Scalar(0, 0, 200), 3, 4);
   }
   return;
 }
-  
-
-//std::vector<int> calc_center(cv::Mat* img)
-/*
-int calc_center(cv::Mat img)
-{
-  std::vector<int> center_pos(2, 0);
-  int x, y, sum = 0;
-  cv::Mat ones_col = cv::Mat::ones(img.cols, 1, CV_8UC3);
-  cv::Mat ones_row = cv::Mat::ones(img.rows, 1, CV_8UC3);
-  std::cout << ones_col.cols << " " << ones_col.rows << std::endl;
-  cv::Mat cols = img * ones_col;
-  //cv::Mat rows = img->t() * ones_row;
-  //sum = ((cv::Mat)(cols * ones_row)).at<unsigned char>(0, 0);
-  center_pos[0] = sum;
-  center_pos[1] = sum;
-  return sum;
-}
-*/

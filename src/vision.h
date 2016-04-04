@@ -1,6 +1,6 @@
 #include <opencv/cv.h>
 
-void colorExtraction(cv::Mat*, cv::Mat*, int, int, int, int, int, int, int); 
+//void colorExtraction(cv::Mat*, cv::Mat*, int, int, int, int, int, int, int); 
 void myHoughCircles(cv::Mat&, std::vector<cv::Vec3f>&, double, double, double, double, int, int);
 
 class Pers{
