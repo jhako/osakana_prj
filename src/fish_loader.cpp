@@ -45,7 +45,7 @@ std::vector<Fish*> FishLoader::load_fish()
 	//ディレクトリ内のファイルをすべてリストに追加
 	const boost::filesystem::path path(dir);
 	const auto end = boost::filesystem::directory_iterator();
-	for(auto& p = boost::filesystem::directory_iterator(path); p != end; ++p)
+	for(auto p = boost::filesystem::directory_iterator(path); p != end; ++p)
 	{
 		std::string fn = p->path().filename().string();
 		if(fn.find(".png"))
