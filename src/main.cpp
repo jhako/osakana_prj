@@ -5,10 +5,19 @@
 #include <GL/glut.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 #include <chrono>
 #include <thread>
 #include "world.h"
 #include "vision.h"
+#include "Labeling.h"
+
+cv::RNG rnd(1192);
+
+cv::Scalar randomColor()
+{
+  return cv::Scalar(rnd.next() & 0xFF, rnd.next() & 0xFF, rnd.next() & 0xFF);
+}
 
 //Worldの実体（updateとdisplayで使うためグローバル）
 World* p_world;
@@ -75,24 +84,45 @@ static void update()
 	last_time = current_time;
 
 	//カメラデータの取得
-	cv::Mat frame;
-	cv::Mat dst;
+	cv::Mat frame, mid, dst;
 	cap >> frame;
 	std::vector<cv::Vec3f> circles;
 
 	//トラックバーの値の取得
 	
-	int dp = cv::getTrackbarPos("dp", "Capture");
-	int minDist = cv::getTrackbarPos("minDist", "Capture");
-	int param1 = cv::getTrackbarPos("param1", "Capture");
-	int param2 = cv::getTrackbarPos("param2", "Capture");
-	int minRadius = cv::getTrackbarPos("minRadius", "Capture");
-	int maxRadius = cv::getTrackbarPos("maxRadius", "Capture");
+	//int dp = cv::getTrackbarPos("dp", "Capture");
+	//int minDist = cv::getTrackbarPos("minDist", "Capture");
+	//int param1 = cv::getTrackbarPos("param1", "Capture");
+	//int param2 = cv::getTrackbarPos("param2", "Capture");
+	//int minRadius = cv::getTrackbarPos("minRadius", "Capture");
+	//int maxRadius = cv::getTrackbarPos("maxRadius", "Capture");
+	int thresh = cv::getTrackbarPos("thresh", "Capture");
 
 	if(p_pers->get_vector_size() == 4){
-	  p_pers->perspective(&frame, &dst); //透視変換
-	  myHoughCircles(dst, circles, (double)dp/50.0, (double)minDist/10.0, param1, param2, minRadius, maxRadius); //円を検出し、表示する
-	  cv::imshow("Destination", dst);
+	  p_pers->perspective(&frame, &mid); //透視変換
+	  //myHoughCircles(dst, circles, (double)dp/50.0, (double)minDist/10.0, param1, param2, minRadius, maxRadius); //円を検出し、表示する
+	  cv::cvtColor(mid, dst, CV_RGB2GRAY);
+	  cv::threshold(dst, dst, thresh, 255, cv::THRESH_BINARY);
+	  dst = ~dst;
+	  cv::Mat label(dst.size(), CV_16SC1);
+	  LabelingBS labeling;
+	  labeling.Exec(dst.data, (short *)label.data, dst.cols, dst.rows, false, 0);
+	  // ラベリング結果を出力する、真っ白な状態で初期化
+	  cv::Mat outimg(dst.size(), CV_8UC3, cv::Scalar(255, 255, 255));
+	  
+	  // ラベルされた領域をひとつずつ描画
+	  for( int i = 0; i < labeling.GetNumOfRegions(); i++)
+	    {
+	      // ラベリング結果でイロイロする。
+	      // ラベリング結果の領域を抽出する。
+	      cv::Mat labelarea;
+	      cv::compare(label, i + 1, labelarea, CV_CMP_EQ);
+	      // 抽出した領域にランダムな色を設定して出力画像に追加。
+	      cv::Mat color(dst.size(), CV_8UC3, randomColor());
+	      color.copyTo(outimg, labelarea);
+	    }
+	  //cv::Canny(dst, dst, 50, 200);
+	  cv::imshow("Destination", outimg);
 	  cv::imshow("Capture", frame);
 	}else{
 	  cv::imshow("Capture", frame);
@@ -198,13 +228,14 @@ int main(int argc, char *argv[])
 	//トラックバーの作成
 
 	int slider_value_low = 10;
-	int slider_value_high = 100;
-	cv::createTrackbar("dp", "Capture", &slider_value_low, 100);
-	cv::createTrackbar("minDist", "Capture", &slider_value_high, 100);
-	cv::createTrackbar("param1", "Capture", &slider_value_low, 100);
-	cv::createTrackbar("param2", "Capture", &slider_value_high, 100);
-	cv::createTrackbar("minRadius", "Capture", &slider_value_low, 100);
-	cv::createTrackbar("maxRadius", "Capture", &slider_value_high, 100);
+	//int slider_value_high = 100;
+	//cv::createTrackbar("dp", "Capture", &slider_value_low, 100);
+	//cv::createTrackbar("minDist", "Capture", &slider_value_high, 100);
+	//cv::createTrackbar("param1", "Capture", &slider_value_low, 100);
+	//cv::createTrackbar("param2", "Capture", &slider_value_high, 100);
+	//cv::createTrackbar("minRadius", "Capture", &slider_value_low, 100);
+	//cv::createTrackbar("maxRadius", "Capture", &slider_value_high, 100);
+	cv::createTrackbar("thresh", "Capture", &slider_value_low, 255);
 
 	//マウスコールバックの設定
 	//cv::setMouseCallback("Capture", p_pers->onMouse, 0);
