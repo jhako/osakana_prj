@@ -12,21 +12,7 @@
 #include "vision.h"
 #include "Labeling.h"
 
-void PrintDepth(unsigned int depth)
-{
-  std::string strDepth = 
-    (
-     depth == CV_8U ? "CV_8U" :
-     depth == CV_8S ? "CV_8S" :
-     depth == CV_16U ? "CV_16U" :
-     depth == CV_16S ? "CV_16S" :
-     depth == CV_32S ? "CV_32S" :
-     depth == CV_32F ? "CV_32F" :
-     depth == CV_64F ? "CV_64F" :
-      "Other"
-     );
-  std::cout << "depth: " << strDepth << std::endl;
-}
+#define POINTNUM 10
 
 //Worldの実体（updateとdisplayで使うためグローバル）
 World* p_world;
@@ -93,7 +79,7 @@ static void update()
 	last_time = current_time;
 
 	//カメラデータの取得
-	cv::Mat frame, mid, dst;
+	cv::Mat frame, mid;
 	cap >> frame;
 	std::vector<cv::Vec3f> circles;
 
@@ -109,7 +95,10 @@ static void update()
 
 	if(p_pers->get_vector_size() == 4){
 	  p_pers->perspective(&frame, &mid); //透視変換
+	  cv::Mat dst(mid.size(), CV_8UC3, cv::Scalar(255, 255, 255));
+	  //detect_shadow(mid, dst, thresh);
 	  //myHoughCircles(dst, circles, (double)dp/50.0, (double)minDist/10.0, param1, param2, minRadius, maxRadius); //円を検出し、表示する
+	  
 	  cv::cvtColor(mid, dst, CV_RGB2GRAY);
 	  cv::threshold(dst, dst, thresh, 255, cv::THRESH_BINARY);
 	  dst = ~dst;
@@ -124,8 +113,20 @@ static void update()
 	  color.copyTo(outimg, labelarea);
 	  //std::cout << outimg.rows << " " << outimg.cols << " " << outimg.channels() << std::endl;
 	  //PrintDepth(outimg.depth());
-	  int B = outimg.at<cv::Vec3b>(10, 10)[0];
-	  std::cout << B << std::endl;
+	  std::vector<cv::Point> shadow_points;
+	  int count = 0;
+	  for(int j = 0; j < 1000; j++){
+	    int x = rand() % 640;
+	    int y = rand() % 640;
+	    //std::cout << (int) outimg.at<cv::Vec3b>(x, y)[0] << std::endl; 
+	    if((int) outimg.at<cv::Vec3b>(x, y)[0] == 0){
+	      std::cout << '(' << x << ',' << y << ')';
+	      shadow_points.push_back(cv::Point(x, y));
+	      count++;
+	    }
+	    if(count > POINTNUM) break;
+	  }
+	  std::cout << std::endl;
 	  cv::imshow("Destination", outimg);
 	  cv::imshow("Capture", frame);
 	}else{
@@ -231,7 +232,7 @@ int main(int argc, char *argv[])
 	cv::namedWindow("Capture", CV_WINDOW_AUTOSIZE | CV_WINDOW_FREERATIO);
 	//トラックバーの作成
 
-	int slider_value_low = 10;
+	int slider_value_low = 100;
 	//int slider_value_high = 100;
 	//cv::createTrackbar("dp", "Capture", &slider_value_low, 100);
 	//cv::createTrackbar("minDist", "Capture", &slider_value_high, 100);
