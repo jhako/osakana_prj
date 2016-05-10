@@ -12,11 +12,20 @@
 #include "vision.h"
 #include "Labeling.h"
 
-cv::RNG rnd(1192);
-
-cv::Scalar randomColor()
+void PrintDepth(unsigned int depth)
 {
-  return cv::Scalar(rnd.next() & 0xFF, rnd.next() & 0xFF, rnd.next() & 0xFF);
+  std::string strDepth = 
+    (
+     depth == CV_8U ? "CV_8U" :
+     depth == CV_8S ? "CV_8S" :
+     depth == CV_16U ? "CV_16U" :
+     depth == CV_16S ? "CV_16S" :
+     depth == CV_32S ? "CV_32S" :
+     depth == CV_32F ? "CV_32F" :
+     depth == CV_64F ? "CV_64F" :
+      "Other"
+     );
+  std::cout << "depth: " << strDepth << std::endl;
 }
 
 //Worldの実体（updateとdisplayで使うためグローバル）
@@ -109,19 +118,14 @@ static void update()
 	  labeling.Exec(dst.data, (short *)label.data, dst.cols, dst.rows, false, 0);
 	  // ラベリング結果を出力する、真っ白な状態で初期化
 	  cv::Mat outimg(dst.size(), CV_8UC3, cv::Scalar(255, 255, 255));
-	  
-	  // ラベルされた領域をひとつずつ描画
-	  for( int i = 0; i < labeling.GetNumOfRegions(); i++)
-	    {
-	      // ラベリング結果でイロイロする。
-	      // ラベリング結果の領域を抽出する。
-	      cv::Mat labelarea;
-	      cv::compare(label, i + 1, labelarea, CV_CMP_EQ);
-	      // 抽出した領域にランダムな色を設定して出力画像に追加。
-	      cv::Mat color(dst.size(), CV_8UC3, randomColor());
-	      color.copyTo(outimg, labelarea);
-	    }
-	  //cv::Canny(dst, dst, 50, 200);
+	  cv::Mat labelarea;
+	  cv::compare(label, 1, labelarea, CV_CMP_EQ);
+	  cv::Mat color(dst.size(), CV_8UC3, cv::Scalar(0, 0, 0));
+	  color.copyTo(outimg, labelarea);
+	  //std::cout << outimg.rows << " " << outimg.cols << " " << outimg.channels() << std::endl;
+	  //PrintDepth(outimg.depth());
+	  int B = outimg.at<cv::Vec3b>(10, 10)[0];
+	  std::cout << B << std::endl;
 	  cv::imshow("Destination", outimg);
 	  cv::imshow("Capture", frame);
 	}else{
