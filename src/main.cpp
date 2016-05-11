@@ -25,7 +25,7 @@ const int FPS_micro = 1000000.0 / 60; //60 FPS
 std::chrono::time_point<std::chrono::system_clock> last_time;
 
 //OpenCV用
-cv::VideoCapture cap(0);
+cv::VideoCapture cap(1);
 
 static void display()
 {
