@@ -11,8 +11,6 @@ const float dx = 0.01;
 const float dy = 0.01;
 const float g = 9.8;
 
-out vec4 FragData0;
-out vec4 FragData1;
 
 //CFL条件 : dx > cdt
 
@@ -47,7 +45,7 @@ void main(void)
 
 	vec3 u = p - dt / dx * (F(xe) - F(xp)) - dt / dy * (G(yn) - G(yp));
 	
-	FragData0 = vec4(u, 1.0);
+	gl_FragData[0] = vec4(u, 1.0);
 
 	
 	vec3 v1 = vec3(1.0f, 0.0f, (xe - xp) / (dx));
@@ -55,6 +53,6 @@ void main(void)
 	
 	vec3 n = cross(v1, v2);
 	
-	FragData1.r = n.x;
-	FragData1.g = n.y;
+	gl_FragData[1].r = n.x;
+	gl_FragData[1].g = n.y;
 }

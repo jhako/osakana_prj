@@ -13,8 +13,6 @@ const float dy = 0.01;
 const float g = 9.8;
 const float c = 0.3;
 
-out vec4 FragData0;
-out vec4 FragData1;
 
 //CFL条件 : dx > cdt
 
@@ -89,10 +87,10 @@ void main(void)
 		yu.z = 0.0;
 	}
 
-	FragData0 = vec4(xu, 1.0);
-	FragData1 = vec4(yu, 1.0);
+	gl_FragData[0] = vec4(xu, 1.0);
+	gl_FragData[1] = vec4(yu, 1.0);
 	
 	//debug
 //	vec4 color = vec4(0.0);
-//	FragData2 = color;
+//	gl_FragData[2] = color;
 }

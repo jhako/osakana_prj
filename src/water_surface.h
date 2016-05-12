@@ -5,7 +5,7 @@
 
 
 #include <vector>
-#include <GL/glut.h>
+#include <GLFW/glfw3.h>
 #include <memory>
 
 #include "glm/gtc/matrix_transform.hpp"
@@ -19,8 +19,6 @@ class WaterSurface
 protected:
 	double	width;
 	double	height;
-
-	GLuint	frame_buf;
 
 public:
 
@@ -47,6 +45,8 @@ class WaterSurfaceCPU :public WaterSurface
 	std::unique_ptr<MyShader>	water_shader;
 	std::unique_ptr<MyShader>	caustics_shader;
 
+	//フレームバッファ
+	GLuint		frame_buf;
 	//キューブマッピング用テクスチャ
 	GLuint		cube_tex;
 	//コースティクスマップ
@@ -82,7 +82,10 @@ class WaterSurfaceGPU_SWE:public WaterSurface
 	GLuint vao;
 	GLuint vbo;
 
-	GLuint frame_buf;
+	//GLuint frame_buf;
+	GLuint fbo_usn;
+	GLuint fbo_usxy;
+	GLuint fbo_cau;
 	GLuint us_map[2];
 	GLuint x_us_map;
 	GLuint y_us_map;
@@ -95,8 +98,10 @@ class WaterSurfaceGPU_SWE:public WaterSurface
 	//行列群
 	glm::mat4x4 proj,   //射影行列
 		        modelv; //モデルビュー行列
-	glm::mat3x3 normalm; 
+	glm::mat3x3 normalm;
 
+	//メッシュ数
+	const int NMeshX, NMeshY;
 
 public:
 	WaterSurfaceGPU_SWE(double w, double h);

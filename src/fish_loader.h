@@ -7,7 +7,7 @@
 
 class World;
 class Fish;
-class TexImage;
+class TexImageWithShader;
 
 class FishLoader
 {
@@ -22,6 +22,6 @@ private:
 	World*			p_world;
 
 	std::unordered_set<std::string>		file_history;
-	std::vector<TexImage*>	texture_list;
+	std::vector<TexImageWithShader*>	texture_list;
 
 };

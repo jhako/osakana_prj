@@ -2,9 +2,10 @@
 
 #include <stdlib.h>
 #include <GL/glew.h>
-#include <GL/glut.h>
+#include <GLFW/glfw3.h>
 #include <iostream>
 #include <array>
+#include <boost/multi_array.hpp>
 #include "glm/mat3x3.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "shader.h"
@@ -23,7 +24,7 @@ static const GLfloat position[][2] =
 static const int vertices = sizeof position / sizeof position[0];
 
 //テクスチャサイズ
-const int TSIZE = 100;
+//const int TSIZE = 100;
 
 //デフォルトの水面高
 constexpr float H = 10.0f;
@@ -48,8 +49,13 @@ static const char *tex[] = {
 static TexImage envimg[6];
 
 
+//基本メッシュ数
+const int NumMesh = 100;
+
 WaterSurfaceGPU_SWE::WaterSurfaceGPU_SWE(double w, double h)
-	:WaterSurface(w, h)
+	:WaterSurface(w, h),
+	 NMeshX(NumMesh * w / h),
+	 NMeshY(NumMesh)
 {
 	ren_shader = std::unique_ptr<MyShader>(new MyShader(
 		"shader/wsgpuswe/ren.vs",
@@ -80,13 +86,14 @@ WaterSurfaceGPU_SWE::WaterSurfaceGPU_SWE(double w, double h)
 		glTexImage2D(target[i], 0, GL_RGBA, 128, 128, 0,
 			GL_BGRA, GL_UNSIGNED_BYTE, envimg[i].get_data());
 	}
+	glBindTexture(GL_TEXTURE_2D, 0);
 
 
 	for(int i = 0; i < 2; ++i)
 	{
 		glGenTextures(1, &us_map[i]);
 		glBindTexture(GL_TEXTURE_2D, us_map[i]);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, TSIZE, TSIZE, 0, GL_RGBA, GL_FLOAT, 0);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, NMeshX, NMeshY, 0, GL_RGB, GL_FLOAT, 0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glBindTexture(GL_TEXTURE_2D, 0);
@@ -95,7 +102,7 @@ WaterSurfaceGPU_SWE::WaterSurfaceGPU_SWE(double w, double h)
 
 	glGenTextures(1, &x_us_map);
 	glBindTexture(GL_TEXTURE_2D, x_us_map);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, TSIZE + 1, TSIZE + 1, 0, GL_RGBA, GL_FLOAT, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, NMeshX + 1, NMeshY + 1, 0, GL_RGBA, GL_FLOAT, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -103,7 +110,7 @@ WaterSurfaceGPU_SWE::WaterSurfaceGPU_SWE(double w, double h)
 
 	glGenTextures(1, &y_us_map);
 	glBindTexture(GL_TEXTURE_2D, y_us_map);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, TSIZE + 1, TSIZE + 1, 0, GL_RGBA, GL_FLOAT, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, NMeshX + 1, NMeshY + 1, 0, GL_RGBA, GL_FLOAT, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -111,23 +118,27 @@ WaterSurfaceGPU_SWE::WaterSurfaceGPU_SWE(double w, double h)
 
 	glGenTextures(1, &normal_map);
 	glBindTexture(GL_TEXTURE_2D, normal_map);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, TSIZE, TSIZE, 0, GL_RGBA, GL_FLOAT, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, NMeshX, NMeshY, 0, GL_RGBA, GL_FLOAT, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-
-	GLubyte obstacle_buf[TSIZE][TSIZE][3] = {0};
-	for(int i = 0; i < TSIZE; ++i)
+	//GLubyte obstacle_buf[NMeshY][NMeshX][3] = {0};
+	boost::multi_array<GLubyte, 3> obstacle_buf(boost::extents[NMeshY][NMeshX][3]);
+	std::fill(obstacle_buf.data(), obstacle_buf.data() + obstacle_buf.num_elements(), 0);
+	for(int i = 0; i < NMeshY; ++i)
+	{
+		obstacle_buf[i][0][0] = 255;
+		obstacle_buf[i][NMeshX - 1][0] = 255;
+	}
+	for(int i = 0; i < NMeshX; ++i)
 	{
 		obstacle_buf[0][i][0] = 255;
-		obstacle_buf[TSIZE - 1][i][0] = 255;
-		obstacle_buf[i][0][0] = 255;
-		obstacle_buf[i][TSIZE - 1][0] = 255;
+		obstacle_buf[NMeshY - 1][i][0] = 255;
 	}
 	glGenTextures(1, &obstacle_map);
 	glBindTexture(GL_TEXTURE_2D, obstacle_map);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, TSIZE, TSIZE, 0, GL_RGB, GL_UNSIGNED_BYTE, &obstacle_buf);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, NMeshX, NMeshY, 0, GL_RGB, GL_UNSIGNED_BYTE, &obstacle_buf[0][0][0]);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -158,17 +169,38 @@ WaterSurfaceGPU_SWE::WaterSurfaceGPU_SWE(double w, double h)
 	glBindTexture(GL_TEXTURE_2D, 0);
 
 	//フレームバッファの割り当て
-	glGenFramebuffersEXT(1, &frame_buf);
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, frame_buf);
+	//USN
+	glGenFramebuffersEXT(1, &fbo_usn);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo_usn);
+
+	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, us_map[0], 0);
+	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_2D, us_map[1], 0);
+	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_TEXTURE_2D, normal_map, 0);
+
+	int a = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if(a != GL_FRAMEBUFFER_COMPLETE)
+		printf("@Wusn  Failed to make complete framebuffer object %x \n", a);
+	//USXY
+	glGenFramebuffersEXT(1, &fbo_usxy);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo_usxy);
+
+	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, x_us_map, 0);
+	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_2D, y_us_map, 0);
+
+	a = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if(a != GL_FRAMEBUFFER_COMPLETE)
+		printf("@Wusxy Failed to make complete framebuffer object %x \n", a);
+	//CAU
+	glGenFramebuffersEXT(1, &fbo_cau);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo_cau);
 
 	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, caustics_map, 0);
-	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_2D, x_us_map, 0);
-	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_TEXTURE_2D, y_us_map, 0);
-	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT3_EXT, GL_TEXTURE_2D, us_map[0], 0);
-	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT4_EXT, GL_TEXTURE_2D, us_map[1], 0);
-	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT5_EXT, GL_TEXTURE_2D, normal_map, 0);
-	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT6_EXT, GL_TEXTURE_2D, cau_p1, 0);
-	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT7_EXT, GL_TEXTURE_2D, cau_p2, 0);
+	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_2D, cau_p1, 0);
+	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_TEXTURE_2D, cau_p2, 0);
+
+	a = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if(a != GL_FRAMEBUFFER_COMPLETE)
+		printf("@Wcau  Failed to make complete framebuffer object %x \n", a);
 
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
@@ -190,11 +222,12 @@ WaterSurfaceGPU_SWE::WaterSurfaceGPU_SWE(double w, double h)
 	glBindVertexArray(0);
 
 	//initial condition
-	GLfloat initial[TSIZE][TSIZE][3];
+	boost::multi_array<GLfloat, 3> initial(boost::extents[NMeshY][NMeshX][3]);
+	std::fill(initial.data(), initial.data() + initial.num_elements(), 0.0);
 
-	for(int i = 0; i < TSIZE; ++i)
+	for(int i = 0; i < NMeshY; ++i)
 	{
-		for(int j = 0; j < TSIZE; ++j)
+		for(int j = 0; j < NMeshX; ++j)
 		{
 			initial[i][j][0] = H;
 			initial[i][j][1] = 0.0;
@@ -202,6 +235,7 @@ WaterSurfaceGPU_SWE::WaterSurfaceGPU_SWE(double w, double h)
 		}
 	}
 
+	/*
 	float hsize = 10;
 
 	for(float r = 0; r < hsize; r += 1.0f / TSIZE)
@@ -214,25 +248,29 @@ WaterSurfaceGPU_SWE::WaterSurfaceGPU_SWE(double w, double h)
 			initial[x][y][0] = 0.05 * cos(r * 3.141592 / 2.0 / hsize) + H;
 		}
 	}
+	*/
 
 	//for(int i = 0; i < 2; ++i)
 	for(int i = 0; i < 2; ++i)
 	{
 		glBindTexture(GL_TEXTURE_2D, us_map[i]);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, TSIZE, TSIZE, GL_RGB, GL_FLOAT, initial);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, NMeshX, NMeshY, GL_RGB, GL_FLOAT, &initial[0][0][0]);
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
-
 	//行列の設定
 ///*
 	//--2D
-	proj = glm::perspective<float>(glm::radians(90.0), (float)width / height, 0.1, 10);
-	gluLookAt(width / 2.0, height / 2.0, height / 2.0, width / 2.0, height / 2.0, 0.0, 0.0, 1.0, 0.0);
+	const double eyeH = 5.0;
+	const double rad = atan(1.0 / eyeH) * 2.0;
+	//proj = glm::perspective<float>(glm::radians(90.0), (float)width / height, 0.1, 10);
+	proj = glm::perspective<float>(rad, 1.0, 0.1, 10);
+	//gluLookAt(width / 2.0, height / 2.0, height / 2.0, width / 2.0, height / 2.0, 0.0, 0.0, 1.0, 0.0);
+	//glOrtho(0.0, width, 0, height, -1000, 1000);
 	modelv = glm::lookAt(
-		glm::vec3(0.0, 0.0, H + 1.0),
+		glm::vec3(0.0, 0.0, H + eyeH),
 		glm::vec3(0.0, 0.0, H),
 		glm::vec3(0.0, 1.0, 0.0));
 //*/
@@ -270,7 +308,6 @@ void WaterSurfaceGPU_SWE::render(GLuint underwater_tex)
 //	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 //	glDisable(GL_DEPTH_TEST);
 
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, frame_buf);
 	/*
 	const auto fbufs = std::vector<GLenum>{
 	GL_COLOR_ATTACHMENT0_EXT,
@@ -282,114 +319,122 @@ void WaterSurfaceGPU_SWE::render(GLuint underwater_tex)
 	};
 	*/
 
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	//glBindTexture(GL_TEXTURE_2D, 0);
 
 	//*** simulation ***
 	constexpr int SimulationStep = 2;
 	for(int step = 0; step < SimulationStep; ++step)
 	{
 		//copy 1->0
-		glViewport(0, 0, TSIZE, TSIZE);
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo_usn);
+
+		glViewport(0, 0, NMeshX, NMeshY);
 		glUseProgram(copy_shader->get_prog());
 
-		constexpr GLenum buf_cpy[1] = {GL_COLOR_ATTACHMENT3_EXT};
+		constexpr GLenum buf_cpy[1] = {GL_COLOR_ATTACHMENT0_EXT};
 		glDrawBuffers(1, buf_cpy);
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, us_map[1]);
-		glUniform1i(glGetUniformLocation(copy_shader->get_prog(), "src"), 1); //gl_FragData[0]
 		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, us_map[1]);
+		glUniform1i(glGetUniformLocation(copy_shader->get_prog(), "src"), 0); //gl_FragData[0]
 
 		glBindVertexArray(vao);
 		glDrawArrays(GL_TRIANGLE_FAN, 0, vertices);
 		glBindVertexArray(0);
 
-		glFlush();
-
+		//glFlush();
+		glBindTexture(GL_TEXTURE_2D, 0);
 		glUseProgram(0);
 
 		//us0 -> x_us, y_us
-		glViewport(0, 0, TSIZE + 1, TSIZE + 1);
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo_usxy);
+
+		glViewport(0, 0, NMeshX + 1, NMeshY + 1);
 		glUseProgram(st1_shader->get_prog());
 
-		constexpr GLenum buf_st1[3] = {GL_COLOR_ATTACHMENT1_EXT, GL_COLOR_ATTACHMENT2_EXT};
+		constexpr GLenum buf_st1[3] = {GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT};
 		glDrawBuffers(3, buf_st1);
 
-		glActiveTexture(GL_TEXTURE1);
+		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, us_map[0]);
-		glUniform1i(glGetUniformLocation(st1_shader->get_prog(), "us0"), 1);
-		glActiveTexture(GL_TEXTURE2);
+		glUniform1i(glGetUniformLocation(st1_shader->get_prog(), "us0"), 0);
+		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, x_us_map);
-		glUniform1i(glGetUniformLocation(st1_shader->get_prog(), "x_us"), 2); //gl_FragData[0]
-		glActiveTexture(GL_TEXTURE3);
+		glUniform1i(glGetUniformLocation(st1_shader->get_prog(), "x_us"), 1); //gl_FragData[0]
+		glActiveTexture(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, y_us_map);
-		glUniform1i(glGetUniformLocation(st1_shader->get_prog(), "y_us"), 3); //gl_FragData[1]
-		glActiveTexture(GL_TEXTURE4);
+		glUniform1i(glGetUniformLocation(st1_shader->get_prog(), "y_us"), 2); //gl_FragData[1]
+		glActiveTexture(GL_TEXTURE3);
 		glBindTexture(GL_TEXTURE_2D, obstacle_map);
-		glUniform1i(glGetUniformLocation(st1_shader->get_prog(), "obstacle_tex"), 4);
+		glUniform1i(glGetUniformLocation(st1_shader->get_prog(), "obstacle_tex"), 3);
 		glActiveTexture(GL_TEXTURE0);
 
 		glBindVertexArray(vao);
 		glDrawArrays(GL_TRIANGLE_FAN, 0, vertices);
 		glBindVertexArray(0);
 
-		glFlush();
+		//glFlush();
 
+		glBindTexture(GL_TEXTURE_2D, 0);
 		glUseProgram(0);
 
 		//x_us, y_us -> us1
-		glViewport(0, 0, TSIZE, TSIZE);
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo_usn);
+
+		glViewport(0, 0, NMeshX, NMeshY);
 		glUseProgram(st2_shader->get_prog());
 
-		constexpr GLenum buf_st2[2] = {GL_COLOR_ATTACHMENT4_EXT, GL_COLOR_ATTACHMENT5_EXT};
+		constexpr GLenum buf_st2[2] = {GL_COLOR_ATTACHMENT1_EXT, GL_COLOR_ATTACHMENT2_EXT};
 		glDrawBuffers(2, buf_st2);
 
-		glActiveTexture(GL_TEXTURE1);
+		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, us_map[0]);
-		glUniform1i(glGetUniformLocation(st2_shader->get_prog(), "us0"), 1);
-		glActiveTexture(GL_TEXTURE2);
+		glUniform1i(glGetUniformLocation(st2_shader->get_prog(), "us0"), 0);
+		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, x_us_map);
-		glUniform1i(glGetUniformLocation(st2_shader->get_prog(), "x_us"), 2);
-		glActiveTexture(GL_TEXTURE3);
+		glUniform1i(glGetUniformLocation(st2_shader->get_prog(), "x_us"), 1);
+		glActiveTexture(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, y_us_map);
-		glUniform1i(glGetUniformLocation(st2_shader->get_prog(), "y_us"), 3);
-		glActiveTexture(GL_TEXTURE4);
+		glUniform1i(glGetUniformLocation(st2_shader->get_prog(), "y_us"), 2);
+		glActiveTexture(GL_TEXTURE3);
 		glBindTexture(GL_TEXTURE_2D, normal_map);
-		glUniform1i(glGetUniformLocation(st2_shader->get_prog(), "nrm_tex"), 4); //gl_FragData[1]
+		glUniform1i(glGetUniformLocation(st2_shader->get_prog(), "nrm_tex"), 3); //gl_FragData[1]
 		glActiveTexture(GL_TEXTURE0);
 
 		glBindVertexArray(vao);
 		glDrawArrays(GL_TRIANGLE_FAN, 0, vertices);
 		glBindVertexArray(0);
 
-		glFlush();
+		//glFlush();
 
+		glBindTexture(GL_TEXTURE_2D, 0);
 		glUseProgram(0);
 	}
 	//****
 
 	//コークティクスシェーダ
-	glViewport(0, 0, width, height);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo_cau);
 
+	glViewport(0, 0, width, height);
 	glUseProgram(cau_pass1_shader->get_prog());
 
-	constexpr GLenum buf_cau_p1[2] = {GL_COLOR_ATTACHMENT6_EXT, GL_COLOR_ATTACHMENT7_EXT};
+	constexpr GLenum buf_cau_p1[2] = {GL_COLOR_ATTACHMENT1_EXT, GL_COLOR_ATTACHMENT2_EXT};
 	glDrawBuffers(2, buf_cau_p1);
 
-	glActiveTexture(GL_TEXTURE1);
+	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, us_map[0]);
-	glUniform1i(glGetUniformLocation(cau_pass1_shader->get_prog(), "us_tex"), 1);
-	glActiveTexture(GL_TEXTURE2);
+	glUniform1i(glGetUniformLocation(cau_pass1_shader->get_prog(), "us_tex"), 0);
+	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, normal_map);
-	glUniform1i(glGetUniformLocation(cau_pass1_shader->get_prog(), "nrm_tex"), 2);
+	glUniform1i(glGetUniformLocation(cau_pass1_shader->get_prog(), "nrm_tex"), 1);
 	glActiveTexture(GL_TEXTURE0);
 
 	glBindVertexArray(vao);
 	glDrawArrays(GL_TRIANGLE_FAN, 0, vertices);
 	glBindVertexArray(0);
 
-	glFlush();
+	//glFlush();
 
+	glBindTexture(GL_TEXTURE_2D, 0);
 	glUseProgram(0);
 
 	glUseProgram(caustics_shader->get_prog());
@@ -397,12 +442,12 @@ void WaterSurfaceGPU_SWE::render(GLuint underwater_tex)
 	constexpr GLenum buf_cau[1] = {GL_COLOR_ATTACHMENT0_EXT};
 	glDrawBuffers(1, buf_cau);
 
-	glActiveTexture(GL_TEXTURE1);
+	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, cau_p1);
-	glUniform1i(glGetUniformLocation(caustics_shader->get_prog(), "cau_p1"), 1);
-	glActiveTexture(GL_TEXTURE2);
+	glUniform1i(glGetUniformLocation(caustics_shader->get_prog(), "cau_p1"), 0);
+	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, cau_p2);
-	glUniform1i(glGetUniformLocation(caustics_shader->get_prog(), "cau_p2"), 2);
+	glUniform1i(glGetUniformLocation(caustics_shader->get_prog(), "cau_p2"), 1);
 	glActiveTexture(GL_TEXTURE0);
 
 	//頂点の描画
@@ -410,15 +455,15 @@ void WaterSurfaceGPU_SWE::render(GLuint underwater_tex)
 	glDrawArrays(GL_TRIANGLE_FAN, 0, vertices);
 	glBindVertexArray(0);
 
-	glFlush();
+	//glFlush();
 
+	glBindTexture(GL_TEXTURE_2D, 0);
 	glUseProgram(0);
 
 
 	//FBO -> 標準バッファ
-	glDrawBuffer(GL_FRONT);
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-	glEnable(GL_DEPTH_TEST);
+	//glEnable(GL_DEPTH_TEST);
 
 
 	//水面シェーダ
@@ -426,21 +471,21 @@ void WaterSurfaceGPU_SWE::render(GLuint underwater_tex)
 
 	glViewport(0, 0, width, height);
 
-	glActiveTexture(GL_TEXTURE1);
+	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, us_map[0]);
-	glUniform1i(glGetUniformLocation(ren_shader->get_prog(), "us_tex"), 1);
-	glActiveTexture(GL_TEXTURE2);
+	glUniform1i(glGetUniformLocation(ren_shader->get_prog(), "us_tex"), 0);
+	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, normal_map);
-	glUniform1i(glGetUniformLocation(ren_shader->get_prog(), "nrm_tex"), 2);
-	glActiveTexture(GL_TEXTURE3);
+	glUniform1i(glGetUniformLocation(ren_shader->get_prog(), "nrm_tex"), 1);
+	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D, caustics_map);
-	glUniform1i(glGetUniformLocation(ren_shader->get_prog(), "cau_tex"), 3);
-	glActiveTexture(GL_TEXTURE4);
+	glUniform1i(glGetUniformLocation(ren_shader->get_prog(), "cau_tex"), 2);
+	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, cube_tex);
-	glUniform1i(glGetUniformLocation(ren_shader->get_prog(), "envmap"), 4);
-	glActiveTexture(GL_TEXTURE5);
+	glUniform1i(glGetUniformLocation(ren_shader->get_prog(), "envmap"), 3);
+	glActiveTexture(GL_TEXTURE4);
 	glBindTexture(GL_TEXTURE_2D, underwater_tex);
-	glUniform1i(glGetUniformLocation(ren_shader->get_prog(), "under_tex"), 5);
+	glUniform1i(glGetUniformLocation(ren_shader->get_prog(), "under_tex"), 4);
 	glActiveTexture(GL_TEXTURE0);
 
 
@@ -453,20 +498,25 @@ void WaterSurfaceGPU_SWE::render(GLuint underwater_tex)
 	glPatchParameteri(GL_PATCH_VERTICES, 4);
 	glDrawArrays(GL_PATCHES, 0, vertices);
 	glBindVertexArray(0);
+	//glBindVertexArray(vao);
+	//glDrawArrays(GL_TRIANGLE_FAN, 0, vertices);
+	//glBindVertexArray(0);
 
+	glBindTexture(GL_TEXTURE_2D, 0);
 	glUseProgram(0);
 
-	glDisable(GL_DEPTH_TEST);
+	//glDisable(GL_DEPTH_TEST);
 
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+	//glMatrixMode(GL_PROJECTION);
+	//glLoadIdentity();
+	//glMatrixMode(GL_MODELVIEW);
+	//glLoadIdentity();
 
 /*
 	//--for debug--
 	glActiveTexture(GL_TEXTURE0);
-	//glBindTexture(GL_TEXTURE_2D, debug_map);
+	//
+	(GL_TEXTURE_2D, debug_map);
 	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, TSIZE + 1, TSIZE + 1, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
 	//glBindTexture(GL_TEXTURE_2D, us_map[0]);
 	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, TSIZE, TSIZE, 0, GL_RGB32F, GL_FLOAT, 0);
@@ -495,8 +545,8 @@ void WaterSurfaceGPU_SWE::render(GLuint underwater_tex)
 
 void WaterSurfaceGPU_SWE::mouse_action(double mouse_x, double mouse_y)
 {
-	const float dx = (float)width / (TSIZE - 1);
-	const float dy = (float)height / (TSIZE - 1);
+	const float dx = (float)width / (NMeshX - 1);
+	const float dy = (float)height / (NMeshY - 1);
 	//---マウス操作による波の作成---
 	float mx = mouse_x;
 	float my = mouse_y;
@@ -509,13 +559,13 @@ void WaterSurfaceGPU_SWE::mouse_action(double mouse_x, double mouse_y)
 	float st_depth = H;
 	float point_x = np.x + (fp.x - np.x) * (st_depth - np.z) / (fp.z - np.z);
 	float point_y = np.y + (fp.y - np.y) * (st_depth - np.z) / (fp.z - np.z);
-	const float h = H + 0.06;
-	int px = (point_x * 0.5 + 0.5) * TSIZE;
-	int py = (point_y * 0.5 + 0.5) * TSIZE;
+	const float h = H - 0.06;
+	int px = (point_x * 0.5 + 0.5) * NMeshX;
+	int py = (point_y * 0.5 + 0.5) * NMeshY;
 	constexpr int N = 3;
 	constexpr int HN = N / 2;
 	const std::vector<std::array<GLfloat, 3>> suf(N * N, {h, 0, 0});
-	if(px >= HN && px < TSIZE - N / HN && py >= HN && py < TSIZE - HN)
+	if(px >= HN && px < NMeshX - N / HN && py >= HN && py < NMeshY - HN)
 	{
 		glBindTexture(GL_TEXTURE_2D, us_map[1]);
 		glTexSubImage2D(GL_TEXTURE_2D, 0, px - HN, py - HN, N, N, GL_RGB, GL_FLOAT, &suf[0][0]);

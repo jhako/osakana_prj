@@ -2,13 +2,20 @@
 #include <iostream>
 #include <stdlib.h>
 #include <GL/glew.h>
-#include <GL/glut.h>
+#include <GLFW/glfw3.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <chrono>
 #include <future>
+#include <sstream>
 #include "world.h"
 #include "vision.h"
+#include "util.h"
+
+
+//ワールドサイズ
+//int w = 640; int h = 640;
+int w = 1024; int h = 768;
 
 //Worldの実体（updateとdisplayで使うためグローバル）
 World* p_world;
@@ -16,16 +23,22 @@ World* p_world;
 //Perspectiveの実体
 Pers *p_pers;
 
+/*
 //FPS（フレーム更新数）
 const int FPS_micro = 1000000.0 / 50; //50 FPS
 std::chrono::time_point<std::chrono::system_clock> last_time;
+*/
+
 
 //OpenCV用
-#define USE_CAPTURE
+//#define USE_CAPTURE
 #ifdef USE_CAPTURE
 	cv::VideoCapture cap(0); //キャプチャ
 	cv::Mat cv_tex; //CVWindowに表示するテクスチャ
 #endif
+
+//フルスクリーン
+//#define FULL_SCREEN
 
 //ミューテックス
 std::mutex mtx;
@@ -33,25 +46,25 @@ std::mutex mtx;
 //フラグ
 bool flag_exit = false;
 
-static void display()
-{
-	p_world->render();
-}
+GLFWwindow* window;
 
-static void keyboard(unsigned char key, int x, int y)
+static void keyboard(GLFWwindow* win, int key, int scancode, int action, int mods)
 {
-	switch (key) {
-	case '\033': //ESC
-		exit(1);
-	default:
-		break;
+	switch(key)
+	{
+		case GLFW_KEY_ESCAPE: //ESC
+			exit(EXIT_SUCCESS);
+		default:
+			break;
 	}
 }
 
-static void mouse(int button, int state, int x, int y)
+static void mouse(GLFWwindow* win, int button, int action, int mods)
 {
+	double x, y;
+	glfwGetCursorPos(win, &x, &y);
 	p_world->set_mouse_pos(vec2d(x, y));
-	if(button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
+	if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
 	{
 		p_world->set_mouse_state(true);
 	}
@@ -59,33 +72,41 @@ static void mouse(int button, int state, int x, int y)
 	{
 		p_world->set_mouse_state(false);
 	}
+	if(button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE)
+	{
+		p_world->set_click_state_right(true);
+	}
+	else
+	{
+		p_world->set_click_state_right(false);
+	}
 }
 
-static void motion(int x, int y)
+static void motion(GLFWwindow* window, double x, double y)
 {
 	p_world->set_mouse_pos(vec2d(x, y));
 }
 
 static void update()
 {
-/*
+
 	//for debug
 	static int debug_step = 0; const int DCount = 10;
 	static std::chrono::time_point<std::chrono::system_clock> start_t, end_t;
 	if(debug_step == 0)
 		start_t = std::chrono::system_clock::now();
-*/
+
 
 	//Worldのアップデート
 	p_world->update();
 
 	//更新のたびに再描画を行う
-	glutPostRedisplay();
+	p_world->render();
+	glfwSwapBuffers(window);
 
 	//GL関連のアップデート
 	p_world->opengl_update();
 
-/*
 	//for debug
 	if(debug_step == DCount)
 	{
@@ -96,17 +117,18 @@ static void update()
 	}
 	else
 		++debug_step;
-*/
-
+	
 	auto current_time = std::chrono::system_clock::now();
 
+	/*
 	//指定したFPSにフレームレートを維持
 	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(current_time - last_time).count();
 	if(duration < FPS_micro)
 	{
-		std::this_thread::sleep_for(std::chrono::microseconds(FPS_micro - duration));
+		//std::this_thread::sleep_for(std::chrono::microseconds(FPS_micro - duration));
 	}
 	last_time = current_time;
+	*/
 }
 
 
@@ -160,31 +182,91 @@ static void cv_onMouse(int event, int x, int y, int flag, void* param)
   pers->onMouse(event, x, y, flag, nullptr);
 }
 
+static void error_callback(int error, const char* description)
+{
+	std::cerr << description << std::endl;
+	exit(EXIT_FAILURE);
+}
+
+static void __stdcall OutputGLDebugMessage(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const GLvoid *userParam);
+
+
 int main(int argc, char *argv[])
 {
 	//乱数のseedを初期化
 	srand((unsigned)time(NULL));
 
-	//ワールドサイズ
-	int w = 640; int h = 640;
+	//エラーコールバックの設定
+	glfwSetErrorCallback(error_callback);
 
-	//glutの初期化およびwindowの定義
-	glutInit(&argc, argv);
+	//glfwの初期化およびwindowの定義
+	glfwInit();
+
+
 	//ALPHA値有効，ダブルバッファリング，Zバッファ有効
-	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH);
+	//glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH);
 	//ウィンドウサイズ，タイトルの設定
-	glutInitWindowSize(w, h);
-	glutCreateWindow("osakana_prj");
-	//
-//	glEnable(GL_DEPTH_TEST);
+	//glutInitWindowSize(w, h);
+	//glutCreateWindow("osakana_prj");
+
+	//デバッグの有効化
+	/*
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_RED_BITS, 8);
+	glfwWindowHint(GLFW_GREEN_BITS, 8);
+	glfwWindowHint(GLFW_BLUE_BITS, 8);
+	glfwWindowHint(GLFW_ALPHA_BITS, 8);
+	glfwWindowHint(GLFW_DEPTH_BITS, 24);
+	glfwWindowHint(GLFW_STENCIL_BITS, 8);
+	*/
+	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, 1);
+
+	//モニタの設定
+	GLFWmonitor* monitor = nullptr;
+#ifdef FULL_SCREEN
+	int msize;
+	GLFWmonitor** monitors;
+	if((monitors = glfwGetMonitors(&msize)) == nullptr)
+	{
+		printf("Error: No monitor");
+		std::exit(1);
+	}
+	//一番サブのモニターを指定
+	monitor = monitors[msize - 1];
+#endif
+	//ウィンドウの作成
+	window = glfwCreateWindow(w, h, "osakana_prj", monitor, nullptr);
+	//glfwSetWindowPos(window, 100, 100);
+	glfwMakeContextCurrent(window);
+
+	// GLEW初期化
+	GLenum glewStatus = glewInit();
+	if(glewStatus != GLEW_OK)
+	{
+		printf("Error: %s", glewGetErrorString(glewStatus));
+		std::exit(1);
+	}
+
+	if(GLEW_ARB_debug_output)
+	{
+		puts("enable : debug_output");
+	}
+
+	//デバッグコールバック
+	glDebugMessageCallback(OutputGLDebugMessage, NULL);
+
+	//垂直同期
+	glfwSwapInterval(1);
+
 	//クリアカラーの設定（水色）
 	glClearColor(240.0 / 255, 248.0 / 255, 1.0, 0);
+
 	//各コールバック関数の設定
-	glutDisplayFunc(display);
-	glutKeyboardFunc(keyboard);
-	glutMouseFunc(mouse);
-	glutMotionFunc(motion); //マウス移動
-	glutIdleFunc(update);
+	glfwSetKeyCallback(window, keyboard);
+	glfwSetMouseButtonCallback(window, mouse);
+	glfwSetCursorPosCallback(window, motion); //マウス移動
+
 	//αテストの判定値
 	glAlphaFunc(GL_GEQUAL, 0.5);
 	//光源の作成
@@ -197,21 +279,16 @@ int main(int argc, char *argv[])
 	glLightfv(GL_LIGHT0, GL_AMBIENT, lightamb);
 	glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, GL_TRUE);
 	//スムースシェーディング（テスト）
-	glShadeModel(GL_SMOOTH);
-	//両面表示
+	//glShadeModel(GL_SMOOTH);
+	//カリング
 	glEnable(GL_CULL_FACE);
+	/*
 	//時間記録
 	last_time = std::chrono::system_clock::now();
+	*/
 	//バージョン表示（デバッグ）
 	printf("version : %s\n", glGetString(GL_VERSION));
 
-	// GLEW初期化
-	GLenum glewStatus = glewInit();
-	if(glewStatus != GLEW_OK)
-	{
-		printf("Error: %s", glewGetErrorString(glewStatus));
-		std::exit(1);
-	}
 
 	p_world = new World(w, h);
 
@@ -245,7 +322,11 @@ int main(int argc, char *argv[])
 #endif
 
 	//メインループの実行
-	glutMainLoop();
+	while(!glfwWindowShouldClose(window))
+	{
+		update();
+		glfwPollEvents();
+	}
 
 	//終了処理（ただしGLUTだと無意味）
 	{
@@ -254,4 +335,45 @@ int main(int argc, char *argv[])
 	}
 
 	return 0;
+}
+
+
+
+static void __stdcall OutputGLDebugMessage(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const GLvoid *userParam)
+{
+	static const char* kSourceStrings[] = {
+		"OpenGL API",
+		"Window System",
+		"Shader Compiler",
+		"Third Party",
+		"Application",
+		"Other",
+	};
+	int sourceNo = (GL_DEBUG_SOURCE_API_ARB <= source && source <= GL_DEBUG_SOURCE_OTHER_ARB)
+		? (source - GL_DEBUG_SOURCE_API_ARB)
+		: (GL_DEBUG_SOURCE_OTHER_ARB - GL_DEBUG_SOURCE_API_ARB);
+
+	static const char* kTypeStrings[] = {
+		"Error",
+		"Deprecated behavior",
+		"Undefined behavior",
+		"Portability",
+		"Performance",
+		"Other",
+	};
+	int typeNo = (GL_DEBUG_TYPE_ERROR_ARB <= type && type <= GL_DEBUG_TYPE_OTHER_ARB)
+		? (type - GL_DEBUG_TYPE_ERROR_ARB)
+		: (GL_DEBUG_TYPE_OTHER_ARB - GL_DEBUG_TYPE_ERROR_ARB);
+
+	static const char* kSeverityStrings[] = {
+		"High",
+		"Medium",
+		"Low",
+	};
+	int severityNo = (GL_DEBUG_SEVERITY_HIGH_ARB <= type && type <= GL_DEBUG_SEVERITY_LOW_ARB)
+		? (type - GL_DEBUG_SEVERITY_HIGH_ARB)
+		: (GL_DEBUG_SEVERITY_LOW_ARB - GL_DEBUG_SEVERITY_HIGH_ARB);
+
+	printf("Source : %s    Type : %s    ID : %d    Severity : %s    \nMessage : %s\n"
+		, kSourceStrings[sourceNo], kTypeStrings[typeNo], id, kSeverityStrings[severityNo], message);
 }

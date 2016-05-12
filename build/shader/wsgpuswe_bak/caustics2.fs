@@ -6,8 +6,6 @@ uniform sampler2D cau_p1;
 uniform sampler2D cau_p2;
 
 in vec4 vpos;
-out vec4 FragData0;
-out vec4 FragData1;
 
 const float etaRatio = 1.0 / 1.333; //air->water
 
@@ -25,7 +23,7 @@ void main(void)
 	color += texelFetchOffset(cau_p2, tpos, 0, ivec2(0, 2)).g;
 	color += texelFetchOffset(cau_p2, tpos, 0, ivec2(0, 3)).b;
 	
-	FragData0 = vec4(color, color, color, 1.0);
+	gl_FragData[0] = vec4(color, color, color, 1.0);
 }
 
 

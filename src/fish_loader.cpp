@@ -48,7 +48,7 @@ std::vector<Fish*> FishLoader::load_fish()
 	for(auto p = boost::filesystem::directory_iterator(path); p != end; ++p)
 	{
 		std::string fn = p->path().filename().string();
-		if(fn.find(".png"))
+		if(fn.find_first_of('.') != std::string::npos)
 		{
 			//std::cout << "found : " << fn << std::endl;
 			file_list.push_back(fn);
@@ -64,7 +64,7 @@ std::vector<Fish*> FishLoader::load_fish()
 			std::string fn = dir + "/" + (it);
 			//std::cout << "add : " << fn.c_str() << std::endl;
 			//テクスチャの作成
-			texture_list.push_back(new TexImage(fn.c_str()));
+			texture_list.push_back(new TexImageWithShader(fn.c_str(), 22, 50, p_world->get_shader()));
 			//魚追加
 			additions.push_back(new Fish(vec2d(320, 320), vec2d(1, 0), texture_list.back(), 2.3));
 			//履歴に追加

@@ -10,10 +10,11 @@
 //近傍の限界距離
 const int RADIUS = 50;
 
-Shark::Shark(vec2d pos_, vec2d velo_)
-	: Fish(pos_, velo_, NULL, 1.8)     //最高速度を遅めに設定
+Shark::Shark(vec2d pos_, vec2d velo_, GLuint shader)
+	: Fish(pos_, velo_, NULL, 0.9)     //最高速度を遅めに設定
 {
-	static TexImage img("shark.png");
+	//static TexImageWithShader img("shark.png", 19, 37, shader);
+	static TexImageWithShader img("newshark.jpg", 26, 60, shader);
 	tex = &img;
 }
 

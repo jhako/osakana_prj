@@ -5,6 +5,7 @@
 
 class Fish;
 class World;
+class Noise;
 
 //--Fishの振る舞いを計算するクラス--
 class Behavior
@@ -29,4 +30,7 @@ public:
 	vec2d randomwalk(Fish* self, World* p_world);
 	//到着行動
 	vec2d arrive(Fish* self, World* p_world, vec2d target_pos);
+	vec2d arrive(Fish * self, vec2d aj_pos, vec2d target_pos);
+	//ノイズ対比
+	vec2d flee_from_noise(Fish* self, World* p_world, std::vector<Noise*>& neighbors);
 };
