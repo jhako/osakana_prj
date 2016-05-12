@@ -8,8 +8,6 @@ uniform sampler2D nrm_tex;
 #define Nhalf 3
 
 in vec4 vpos;
-out vec4 FragData0;
-out vec4 FragData1;
 
 const float etaRatio = 1.0 / 1.333; //air->water
 const float x_scale = 2.0 / 640;
@@ -47,8 +45,8 @@ void main(void)
 		}
 	}
 	
-	FragData0 = vec4(CI[0], CI[1], CI[2], CI[3]);
-	FragData1 = vec4(CI[4], CI[5], CI[6], 1.0);
+	gl_FragData[0] = vec4(CI[0], CI[1], CI[2], CI[3]);
+	gl_FragData[1] = vec4(CI[4], CI[5], CI[6], 1.0);
 	//gl_FragData[0] = vec4(1.0);
 }
 

@@ -1,7 +1,7 @@
 ﻿
 #include <stdlib.h>
 #include <GL/glew.h>
-#include <GL/glut.h>
+#include <GLFW/glfw3.h>
 #include "shader.h"
 #include "vec3d.h"
 #include "water_surface.h"
