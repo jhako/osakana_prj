@@ -2,6 +2,7 @@
 
 //void colorExtraction(cv::Mat*, cv::Mat*, int, int, int, int, int, int, int); 
 void myHoughCircles(cv::Mat&, std::vector<cv::Vec3f>&, double, double, double, double, int, int);
+void detect_shadow(cv::Mat&, cv::Mat&, int);
 
 class Pers{
  private:

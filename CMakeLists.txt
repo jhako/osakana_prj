@@ -54,6 +54,8 @@ add_executable (osakana_prj
 	src/compressor.cpp
 	src/food.cpp
 	src/food.h
+	src/noise.cpp
+	src/noise.h
 )
 
 

@@ -5,6 +5,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include "vision.h"
+#include "Labeling.h"
 
 #define OPENCV_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + (c))
 #define OPENCV_VERSION_CODE OPENCV_VERSION(CV_MAJOR_VERSION, CV_MINOR_VERSION, CV_SUBMINOR_VERSION)
@@ -154,4 +155,25 @@ void myHoughCircles(cv::Mat& img_color, std::vector<cv::Vec3f>& circles, double 
     cv::circle(img_color, cv::Point((*it)[0], (*it)[1]), (*it)[2], cv::Scalar(0, 0, 200), 3, 4);
   }
   return;
+}
+
+//なぜかコアダンプになる
+void detect_shadow(cv::Mat& input, cv::Mat& output, int thresh){
+  cv::Mat tmp1, tmp2;
+  cv::cvtColor(input, tmp1, CV_RGB2GRAY);
+  cv::threshold(tmp2, tmp2, thresh, 255, cv::THRESH_BINARY);
+  tmp2 = ~tmp2;
+  cv::Mat label(output.size(), CV_16SC1);
+  LabelingBS labeling;
+  labeling.Exec(tmp2.data, (short *)label.data, tmp2.cols, tmp2.rows, false, 0);
+  // ラベリング結果を出力する、真っ白な状態で初期化                                                                                    
+  //cv::Mat output(tmp2.size(), CV_8UC3, cv::Scalar(255, 255, 255));
+  cv::Mat labelarea;
+  cv::compare(label, 1, labelarea, CV_CMP_EQ);
+  cv::Mat color(tmp2.size(), CV_8UC3, cv::Scalar(0, 0, 0));
+  color.copyTo(output, labelarea);
+  //return output;
+  //std::cout << outimg.rows << " " << outimg.cols << " " << outimg.channels() << std::endl;
+  //int B = outimg.at<cv::Vec3b>(10, 10)[0];
+  //std::cout << B << std::endl;
 }
