@@ -1,18 +1,25 @@
-﻿#include <iostream>
+﻿
+#include <iostream>
 #include <stdlib.h>
-#include <time.h>
 #include <GL/glew.h>
-#include <GL/glut.h>
+#include <GLFW/glfw3.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <chrono>
-#include <thread>
+#include <future>
+#include <sstream>
 #include "world.h"
 #include "vision.h"
+#include "util.h"
 #include "Labeling.h"
 
 #define POINTNUM 10
+
+
+//ワールドサイズ
+//int w = 640; int h = 640;
+int w = 1024; int h = 768;
 
 //Worldの実体（updateとdisplayで使うためグローバル）
 World* p_world;
@@ -20,32 +27,48 @@ World* p_world;
 //Perspectiveの実体
 Pers *p_pers;
 
+/*
 //FPS（フレーム更新数）
-const int FPS_micro = 1000000.0 / 60; //60 FPS
+const int FPS_micro = 1000000.0 / 50; //50 FPS
 std::chrono::time_point<std::chrono::system_clock> last_time;
+*/
+
 
 //OpenCV用
-cv::VideoCapture cap(1);
+//#define USE_CAPTURE
+#ifdef USE_CAPTURE
+	cv::VideoCapture cap(0); //キャプチャ
+	cv::Mat cv_tex; //CVWindowに表示するテクスチャ
+#endif
 
-static void display()
-{
-	p_world->render();
-}
+//フルスクリーン
+//#define FULL_SCREEN
 
-static void keyboard(unsigned char key, int x, int y)
+//ミューテックス
+std::mutex mtx;
+
+//フラグ
+bool flag_exit = false;
+
+GLFWwindow* window;
+
+static void keyboard(GLFWwindow* win, int key, int scancode, int action, int mods)
 {
-	switch (key) {
-	case '\033': //ESC
-		exit(1);
-	default:
-		break;
+	switch(key)
+	{
+		case GLFW_KEY_ESCAPE: //ESC
+			exit(EXIT_SUCCESS);
+		default:
+			break;
 	}
 }
 
-void mouse(int button, int state, int x, int y)
+static void mouse(GLFWwindow* win, int button, int action, int mods)
 {
+	double x, y;
+	glfwGetCursorPos(win, &x, &y);
 	p_world->set_mouse_pos(vec2d(x, y));
-	if(button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
+	if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
 	{
 		p_world->set_mouse_state(true);
 	}
@@ -53,88 +76,145 @@ void mouse(int button, int state, int x, int y)
 	{
 		p_world->set_mouse_state(false);
 	}
+	if(button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE)
+	{
+		p_world->set_click_state_right(true);
+	}
+	else
+	{
+		p_world->set_click_state_right(false);
+	}
 }
 
-void motion(int x, int y)
+static void motion(GLFWwindow* window, double x, double y)
 {
 	p_world->set_mouse_pos(vec2d(x, y));
 }
 
 static void update()
 {
+
+	//for debug
+	static int debug_step = 0; const int DCount = 10;
+	static std::chrono::time_point<std::chrono::system_clock> start_t, end_t;
+	if(debug_step == 0)
+		start_t = std::chrono::system_clock::now();
+
+
+	//Worldのアップデート
 	p_world->update();
 
 	//更新のたびに再描画を行う
-	glutPostRedisplay();
+	p_world->render();
+	glfwSwapBuffers(window);
 
+	//GL関連のアップデート
+	p_world->opengl_update();
+
+	//for debug
+	if(debug_step == DCount)
+	{
+		end_t = std::chrono::system_clock::now();
+		auto ts = std::chrono::duration_cast<std::chrono::milliseconds>(end_t - start_t).count();
+		std::cout << "time-span : " << ts << ",  FPS : " << 1000.0 * DCount / ts << std::endl;
+		debug_step = 0;
+	}
+	else
+		++debug_step;
+	
 	auto current_time = std::chrono::system_clock::now();
 
+	/*
 	//指定したFPSにフレームレートを維持
 	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(current_time - last_time).count();
-	if (duration < FPS_micro)
+	if(duration < FPS_micro)
 	{
-		std::this_thread::sleep_for(std::chrono::microseconds(FPS_micro - duration));
+		//std::this_thread::sleep_for(std::chrono::microseconds(FPS_micro - duration));
 	}
-
 	last_time = current_time;
-
-	//カメラデータの取得
-	cv::Mat frame, mid;
-	cap >> frame;
-	std::vector<cv::Vec3f> circles;
-
-	//トラックバーの値の取得
-	
-	//int dp = cv::getTrackbarPos("dp", "Capture");
-	//int minDist = cv::getTrackbarPos("minDist", "Capture");
-	//int param1 = cv::getTrackbarPos("param1", "Capture");
-	//int param2 = cv::getTrackbarPos("param2", "Capture");
-	//int minRadius = cv::getTrackbarPos("minRadius", "Capture");
-	//int maxRadius = cv::getTrackbarPos("maxRadius", "Capture");
-	int thresh = cv::getTrackbarPos("thresh", "Capture");
-
-	if(p_pers->get_vector_size() == 4){
-	  p_pers->perspective(&frame, &mid); //透視変換
-	  cv::Mat dst(mid.size(), CV_8UC3, cv::Scalar(255, 255, 255));
-	  //detect_shadow(mid, dst, thresh);
-	  //myHoughCircles(dst, circles, (double)dp/50.0, (double)minDist/10.0, param1, param2, minRadius, maxRadius); //円を検出し、表示する
-	  
-	  cv::cvtColor(mid, dst, CV_RGB2GRAY);
-	  cv::threshold(dst, dst, thresh, 255, cv::THRESH_BINARY);
-	  dst = ~dst;
-	  cv::Mat label(dst.size(), CV_16SC1);
-	  LabelingBS labeling;
-	  labeling.Exec(dst.data, (short *)label.data, dst.cols, dst.rows, false, 0);
-	  // ラベリング結果を出力する、真っ白な状態で初期化
-	  cv::Mat outimg(dst.size(), CV_8UC3, cv::Scalar(255, 255, 255));
-	  cv::Mat labelarea;
-	  cv::compare(label, 1, labelarea, CV_CMP_EQ);
-	  cv::Mat color(dst.size(), CV_8UC3, cv::Scalar(0, 0, 0));
-	  color.copyTo(outimg, labelarea);
-	  //std::cout << outimg.rows << " " << outimg.cols << " " << outimg.channels() << std::endl;
-	  //PrintDepth(outimg.depth());
-	  std::vector<cv::Point> shadow_points;
-	  int count = 0;
-	  for(int j = 0; j < 1000; j++){
-	    int x = rand() % 640;
-	    int y = rand() % 640;
-	    //std::cout << (int) outimg.at<cv::Vec3b>(x, y)[0] << std::endl; 
-	    if((int) outimg.at<cv::Vec3b>(x, y)[0] == 0){
-	      std::cout << '(' << x << ',' << y << ')';
-	      shadow_points.push_back(cv::Point(x, y));
-	      count++;
-	    }
-	    if(count > POINTNUM) break;
-	  }
-	  std::cout << std::endl;
-	  cv::imshow("Destination", outimg);
-	  cv::imshow("Capture", frame);
-	}else{
-	  cv::imshow("Capture", frame);
-	}
-	cv::waitKey(10);
-
+	*/
 }
+
+
+#ifdef USE_CAPTURE
+//認識部分を別スレッドで行う
+static void cv_update()
+{
+	//イベントループ
+	while(true)
+	{
+		//カメラデータの取得
+		cv::Mat frame, mid;
+		cap >> frame;
+		std::vector<cv::Vec3f> circles;
+
+		//トラックバーの値の取得
+
+		//int dp = cv::getTrackbarPos("dp", "Capture");
+		//int minDist = cv::getTrackbarPos("minDist", "Capture");
+		//int param1 = cv::getTrackbarPos("param1", "Capture");
+		//int param2 = cv::getTrackbarPos("param2", "Capture");
+		//int minRadius = cv::getTrackbarPos("minRadius", "Capture");
+		//int maxRadius = cv::getTrackbarPos("maxRadius", "Capture");
+		int thresh = cv::getTrackbarPos("thresh", "Capture");
+
+		if(p_pers->get_vector_size() == 4)
+		{
+			p_pers->perspective(&frame, &mid); //透視変換
+			cv::Mat dst(mid.size(), CV_8UC3, cv::Scalar(255, 255, 255));
+			//detect_shadow(mid, dst, thresh);
+			//myHoughCircles(dst, circles, (double)dp/50.0, (double)minDist/10.0, param1, param2, minRadius, maxRadius); //円を検出し、表示する
+
+			cv::cvtColor(mid, dst, CV_RGB2GRAY);
+			cv::threshold(dst, dst, thresh, 255, cv::THRESH_BINARY);
+			dst = ~dst;
+			cv::Mat label(dst.size(), CV_16SC1);
+			LabelingBS labeling;
+			labeling.Exec(dst.data, (short *)label.data, dst.cols, dst.rows, false, 0);
+			// ラベリング結果を出力する、真っ白な状態で初期化
+			cv::Mat outimg(dst.size(), CV_8UC3, cv::Scalar(255, 255, 255));
+			cv::Mat labelarea;
+			cv::compare(label, 1, labelarea, CV_CMP_EQ);
+			cv::Mat color(dst.size(), CV_8UC3, cv::Scalar(0, 0, 0));
+			color.copyTo(outimg, labelarea);
+			//std::cout << outimg.rows << " " << outimg.cols << " " << outimg.channels() << std::endl;
+			//PrintDepth(outimg.depth());
+			//std::vector<cv::Point> shadow_points;
+			int count = 0;
+			for(int j = 0; j < 1000; j++)
+			{
+				int x = rand() % 640;
+				int y = rand() % 640;
+				//std::cout << (int) outimg.at<cv::Vec3b>(x, y)[0] << std::endl; 
+				if((int)outimg.at<cv::Vec3b>(x, y)[0] == 0)
+				{
+					std::cout << '(' << x << ',' << y << ')';
+					//shadow_points.push_back(cv::Point(x, y));
+					p_world->add_to_noise_list(vec2d(x, y));
+					count++;
+				}
+				if(count > POINTNUM) break;
+			}
+			std::cout << std::endl;
+			cv::imshow("Destination", outimg);
+			cv::imshow("Capture", frame);
+		}
+		else{
+			cv::imshow("Capture", frame);
+		}
+		cv::waitKey(10);
+
+		{
+			std::lock_guard<std::mutex> lock(mtx);
+			if(flag_exit)
+			{
+				break;
+			}
+		}
+	}
+}
+#endif
+
 
 static void cv_onMouse(int event, int x, int y, int flag, void* param)
 {
@@ -142,56 +222,91 @@ static void cv_onMouse(int event, int x, int y, int flag, void* param)
   pers->onMouse(event, x, y, flag, nullptr);
 }
 
+static void error_callback(int error, const char* description)
+{
+	std::cerr << description << std::endl;
+	exit(EXIT_FAILURE);
+}
+
+static void __stdcall OutputGLDebugMessage(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const GLvoid *userParam);
+
+
 int main(int argc, char *argv[])
 {
 	//乱数のseedを初期化
 	srand((unsigned)time(NULL));
 
-	//ワールドサイズ
-	int w = 640; int h = 640;
+	//エラーコールバックの設定
+	glfwSetErrorCallback(error_callback);
 
-	//glutの初期化およびwindowの定義
-	glutInit(&argc, argv);
+	//glfwの初期化およびwindowの定義
+	glfwInit();
+
+
 	//ALPHA値有効，ダブルバッファリング，Zバッファ有効
-	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH);
+	//glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH);
 	//ウィンドウサイズ，タイトルの設定
-	glutInitWindowSize(w, h);
-	glutCreateWindow("osakana_prj");
-	//
-	glEnable(GL_DEPTH_TEST);
-/*
-// /* -- 3D --
-	//射影行列を設定
-	glMatrixMode(GL_PROJECTION);
-	//単位行列に初期化
-	glLoadIdentity();
-	//視界の設定
-	gluPerspective(60.0, (double)w / h, 0.1, 1000.0);
-	//視点
-	gluLookAt(
-		320.0, 0.0, 500.0, // 視点の位置x,y,z;
-		320.0, 320.0, 0.0,   // 視界の中心位置の参照点座標x,y,z
-		0.0, 0.0, 1.0);  //視界の上方向のベクトルx,y,z
-// */
+	//glutInitWindowSize(w, h);
+	//glutCreateWindow("osakana_prj");
 
-/* -- 2D --
-	//射影行列を設定
-	glMatrixMode(GL_PROJECTION);
-	//単位行列に初期化
-	glLoadIdentity();
-	//画面の座標をワールド座標に対応
-	glOrtho(0.0, w, h, 0.0, -1.0, 1.0);
-	//ビューポート変換
-	glViewport(0, 0, w, h);
-*/
+	//デバッグの有効化
+	/*
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_RED_BITS, 8);
+	glfwWindowHint(GLFW_GREEN_BITS, 8);
+	glfwWindowHint(GLFW_BLUE_BITS, 8);
+	glfwWindowHint(GLFW_ALPHA_BITS, 8);
+	glfwWindowHint(GLFW_DEPTH_BITS, 24);
+	glfwWindowHint(GLFW_STENCIL_BITS, 8);
+	*/
+	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, 1);
+
+	//モニタの設定
+	GLFWmonitor* monitor = nullptr;
+#ifdef FULL_SCREEN
+	int msize;
+	GLFWmonitor** monitors;
+	if((monitors = glfwGetMonitors(&msize)) == nullptr)
+	{
+		printf("Error: No monitor");
+		std::exit(1);
+	}
+	//一番サブのモニターを指定
+	monitor = monitors[msize - 1];
+#endif
+	//ウィンドウの作成
+	window = glfwCreateWindow(w, h, "osakana_prj", monitor, nullptr);
+	//glfwSetWindowPos(window, 100, 100);
+	glfwMakeContextCurrent(window);
+
+	// GLEW初期化
+	GLenum glewStatus = glewInit();
+	if(glewStatus != GLEW_OK)
+	{
+		printf("Error: %s", glewGetErrorString(glewStatus));
+		std::exit(1);
+	}
+
+	if(GLEW_ARB_debug_output)
+	{
+		puts("enable : debug_output");
+	}
+
+	//デバッグコールバック
+	glDebugMessageCallback(OutputGLDebugMessage, NULL);
+
+	//垂直同期
+	glfwSwapInterval(1);
+
 	//クリアカラーの設定（水色）
 	glClearColor(240.0 / 255, 248.0 / 255, 1.0, 0);
+
 	//各コールバック関数の設定
-	glutDisplayFunc(display);
-	glutKeyboardFunc(keyboard);
-	glutMouseFunc(mouse);
-	glutMotionFunc(motion); //マウス移動
-	glutIdleFunc(update);
+	glfwSetKeyCallback(window, keyboard);
+	glfwSetMouseButtonCallback(window, mouse);
+	glfwSetCursorPosCallback(window, motion); //マウス移動
+
 	//αテストの判定値
 	glAlphaFunc(GL_GEQUAL, 0.5);
 	//光源の作成
@@ -204,23 +319,20 @@ int main(int argc, char *argv[])
 	glLightfv(GL_LIGHT0, GL_AMBIENT, lightamb);
 	glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, GL_TRUE);
 	//スムースシェーディング（テスト）
-	glShadeModel(GL_SMOOTH);
-	//両面表示
+	//glShadeModel(GL_SMOOTH);
+	//カリング
 	glEnable(GL_CULL_FACE);
-
+	/*
+	//時間記録
 	last_time = std::chrono::system_clock::now();
-
+	*/
+	//バージョン表示（デバッグ）
 	printf("version : %s\n", glGetString(GL_VERSION));
 
-	// GLEW初期化
-	GLenum glewStatus = glewInit();
-	if(glewStatus != GLEW_OK)
-	{
-		printf("Error: %s", glewGetErrorString(glewStatus));
-		std::exit(1);
-	}
 
 	p_world = new World(w, h);
+
+#ifdef USE_CAPTURE
 	p_pers = new Pers();
 
 	//--OpenCVの設定--
@@ -245,8 +357,64 @@ int main(int argc, char *argv[])
 	//マウスコールバックの設定
 	//cv::setMouseCallback("Capture", p_pers->onMouse, 0);
 	cv::setMouseCallback("Capture", cv_onMouse, p_pers);
+
+	//OpenCVは非同期処理
+	auto fut_cv = std::async(std::launch::async, []{ cv_update(); });
+#endif
+
 	//メインループの実行
-	glutMainLoop();
+	while(!glfwWindowShouldClose(window))
+	{
+		update();
+		glfwPollEvents();
+	}
+
+	//終了処理（ただしGLUTだと無意味）
+	{
+		std::lock_guard<std::mutex> lock(mtx);
+		flag_exit = true; //終了
+	}
 
 	return 0;
+}
+
+
+
+static void __stdcall OutputGLDebugMessage(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const GLvoid *userParam)
+{
+	static const char* kSourceStrings[] = {
+		"OpenGL API",
+		"Window System",
+		"Shader Compiler",
+		"Third Party",
+		"Application",
+		"Other",
+	};
+	int sourceNo = (GL_DEBUG_SOURCE_API_ARB <= source && source <= GL_DEBUG_SOURCE_OTHER_ARB)
+		? (source - GL_DEBUG_SOURCE_API_ARB)
+		: (GL_DEBUG_SOURCE_OTHER_ARB - GL_DEBUG_SOURCE_API_ARB);
+
+	static const char* kTypeStrings[] = {
+		"Error",
+		"Deprecated behavior",
+		"Undefined behavior",
+		"Portability",
+		"Performance",
+		"Other",
+	};
+	int typeNo = (GL_DEBUG_TYPE_ERROR_ARB <= type && type <= GL_DEBUG_TYPE_OTHER_ARB)
+		? (type - GL_DEBUG_TYPE_ERROR_ARB)
+		: (GL_DEBUG_TYPE_OTHER_ARB - GL_DEBUG_TYPE_ERROR_ARB);
+
+	static const char* kSeverityStrings[] = {
+		"High",
+		"Medium",
+		"Low",
+	};
+	int severityNo = (GL_DEBUG_SEVERITY_HIGH_ARB <= type && type <= GL_DEBUG_SEVERITY_LOW_ARB)
+		? (type - GL_DEBUG_SEVERITY_HIGH_ARB)
+		: (GL_DEBUG_SEVERITY_LOW_ARB - GL_DEBUG_SEVERITY_HIGH_ARB);
+
+	printf("Source : %s    Type : %s    ID : %d    Severity : %s    \nMessage : %s\n"
+		, kSourceStrings[sourceNo], kTypeStrings[typeNo], id, kSeverityStrings[severityNo], message);
 }

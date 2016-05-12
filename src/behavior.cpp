@@ -4,62 +4,60 @@
 #include "behavior.h"
 #include "world.h"
 #include "fish.h"
-#include <stdlib.h>
+#include "noise.h"
 
 //重みづけ係数
-const double KS = 0.24;  //分離
+const double KS = 0.34;  //分離
 const double KA = 0.025; //整列
 const double KC = 0.06;  //結合
 const double KR = 0.1;   //放浪
 const double KSe = 0.3;  //追従
 const double KF = 0.3;   //逃避
 const double KArr = 0.05;   //到着
+const double KFN = 0.3; //ノイズ逃避
 
-
-vec2d Behavior::separation(Fish* self, World* p_world, std::list<Fish*>& neighbors)
+vec2d Behavior::separation(Fish* self, World* p_world, std::vector<Fish*>& neighbors)
 {
 	if (neighbors.size() == 0)
 		return vec2d();
 
 	//近傍の各対象に対し、距離に反比例する力を計算
 	vec2d force;
-	for (std::list<Fish*>::iterator it = neighbors.begin();
-	it != neighbors.end(); ++it)
+	for (auto& neighbor : neighbors)
 	{
-		vec2d tovec = self->get_pos() - (*it)->get_pos();
+		vec2d tovec = self->get_pos() - neighbor->get_pos();
 		force += tovec.norm() / tovec.length();
 	}
 	return force*KS;
 }
 
 
-vec2d Behavior::alignment(Fish* self, World* p_world, std::list<Fish*>& neighbors)
+
+vec2d Behavior::alignment(Fish* self, World* p_world, std::vector<Fish*>& neighbors)
 {
 	if (neighbors.size() == 0) return vec2d();
 
 	//近傍の全対象の向きの平均を計算し、それに合わせるような力を計算
 	vec2d ave;
-	for (std::list<Fish*>::iterator it = neighbors.begin();
-	it != neighbors.end(); ++it)
+	for(auto& neighbor : neighbors)
 	{
-		ave += (*it)->get_dire();
+		ave += neighbor->get_dire();
 	}
 	ave /= neighbors.size();
 	return (ave - self->get_dire())*KA;
 
 }
 
-vec2d Behavior::cohesion(Fish* self, World* p_world, std::list<Fish*>& neighbors)
+vec2d Behavior::cohesion(Fish* self, World* p_world, std::vector<Fish*>& neighbors)
 {
 	if (neighbors.size() == 0) return vec2d();
 
 	//近傍全対象の中心を計算し、そこに向かう力を与える
 	vec2d center;
 	int num = 0;
-	for (std::list<Fish*>::iterator it = neighbors.begin();
-	it != neighbors.end(); ++it)
+	for(auto& neighbor : neighbors)
 	{
-		center += (*it)->get_pos();
+		center += neighbor->get_pos();
 		++num;
 	}
 	center /= num;
@@ -111,3 +109,34 @@ vec2d Behavior::arrive(Fish * self, World * p_world, vec2d target_pos)
 		return tovec.norm() * self->get_maxspeed() * KArr;
 	}
 }
+
+vec2d Behavior::arrive(Fish * self, vec2d aj_pos, vec2d target_pos)
+{
+	constexpr auto SlowingRadius = 10;
+	vec2d tovec = target_pos - aj_pos;
+	auto length = tovec.length();
+	if(length < SlowingRadius)
+	{
+		return tovec.norm() * self->get_maxspeed() * (length / SlowingRadius) * KArr;
+	}
+	else
+	{
+		return tovec.norm() * self->get_maxspeed() * KArr;
+	}
+}
+
+
+vec2d Behavior::flee_from_noise(Fish* self, World* p_world, std::vector<Noise*>& neighbors)
+{
+	if(neighbors.empty()) return vec2d();
+
+	//近傍の各対象に対し、距離に反比例する力を計算
+	vec2d force;
+	for(auto& neighbor : neighbors)
+	{
+		vec2d tovec = self->get_pos() - neighbor->get_pos();
+		force += tovec.norm() / tovec.length();
+	}
+	return force.norm() * self->get_maxspeed() * KFN;
+}
+

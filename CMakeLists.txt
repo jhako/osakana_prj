@@ -4,67 +4,71 @@ project (osakana_prj)
 
 find_package(OpenGL REQUIRED)
 
-if(WIN32)
-	if(GLUT_ROOT_PATH)
-	  message(WARNING "warning: GLUT_ROOT_PATH is depreciated. ")
-	  set(DEPRECIATED_WIN32_INCLUDE ${GLUT_ROOT_PATH}/include)
-	  set(DEPRECIATED_WIN32_RELEASE ${GLUT_ROOT_PATH}/Release)
-	endif()
-	IF (CMAKE_SIZEOF_VOID_P EQUAL 8)
-		SET(ARCH x64)
-	ENDIF()
-	find_path( GLUT_INCLUDE_DIR NAMES GL/glut.h 
-		PATHS 
-		$ENV{GLUT_ROOT_DIR}/include
-		${DEPRECIATED_WIN32_INCLUDE})
-	find_library( GLUT_glut_LIBRARY NAMES glut glut32 freeglut
-		PATHS
-		$ENV{GLUT_ROOT_DIR}/Release
-		${OPENGL_LIBRARY_DIR}
-		${DEPRECIATED_WIN32_RELEASE}
-		)
-
-	SET(GLUT_LIBRARIES ${GLUT_glut_LIBRARY})
-	MARK_AS_ADVANCED(
-		GLUT_INCLUDE_DIR
-		GLUT_glut_LIBRARY
-	)
-else ()
-	find_package(GLUT REQUIRED)
-endif ()
+set(CMAKE_MODULE_PATH
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmakemodules"
+)
 
 find_package(OpenCV REQUIRED)
+
 find_package(GLEW REQUIRED)
+
+set(Boost_USE_STATIC_LIBS ON)
+
+find_package(GLFW REQUIRED)
+
+find_package(Boost COMPONENTS system filesystem date_time regex REQUIRED)
 
 include_directories(
 	${OPENGL_INCLUDE_DIR}
-	${GLUT_INCLUDE_DIR}
+	${GLFW_INCLUDE_DIR}
 	${GLEW_INCLUDE_DIRS}
+	${Boost_INCLUDE_DIRS}
 )
 
 add_executable (osakana_prj
 	src/main.cpp
+	src/vec2d.h
+	src/vec3d.h
 	src/behavior.cpp
+	src/behavior.h
 	src/fish.cpp
+	src/fish.h
 	src/shark.cpp
+	src/shark.h
 	src/world.cpp
+	src/world.h
 	src/teximage.cpp
-	src/target.cpp
+	src/teximage.h
 	src/shader.cpp
+	src/shader.h
 	src/vision.cpp
+	src/vision.h
+	src/fish_loader.cpp
+	src/fish_loader.h
+	src/water_surface.h
+	src/water_surface_cpu.cpp
+	src/water_surface_gpu_swe.cpp
+	src/ipcom.h
+	src/ipcom.cpp
+	src/compressor.h
+	src/compressor.cpp
+	src/food.cpp
+	src/food.h
+	src/noise.cpp
+	src/noise.h
 )
 
 
 target_link_libraries(osakana_prj
-	${GLUT_LIBRARIES}
 	${OPENGL_LIBRARY}
+	${GLFW_LIBRARIES}
 	${OpenCV_LIBS}
 	${GLEW_LIBRARIES}
+	${Boost_LIBRARIES}
 )
 
-target_compile_features(osakana_prj PRIVATE cxx_range_for)
 
-IF(UNIX)
-	set(CMAKE_CXX_FLAGS "-g")
+if(NOT MSVC)
+	set(CMAKE_CXX_FLAGS "-g -std=c++14")
 	TARGET_LINK_LIBRARIES(osakana_prj m)
-ENDIF(UNIX)
+endif()

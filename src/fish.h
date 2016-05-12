@@ -7,9 +7,10 @@
 
 //--プロトタイプ宣言--
 class World;
-class TexImage;
+class TexImageWithShader;
 class Behavior;
 
+using GLuint = unsigned int;
 
 //--お魚クラス--
 class Fish
@@ -18,7 +19,7 @@ protected:
 	vec2d pos;           //位置
 	vec2d velo;          //速度
 	vec2d dire;          //向き
-	TexImage* tex;       //画像データ
+	TexImageWithShader* tex;       //画像データ
 	Behavior* behavior;  //振る舞い
 	double max_speed;    //最高速度
 	int id;              //ID（識別番号）
@@ -27,8 +28,8 @@ protected:
 public:
 	//初期化関数（複数のコンストラクタでの同様の記述をまとめた関数）
 	void init(vec2d pos_, vec2d velo_);
-	Fish(vec2d pos_, vec2d velo_);
-	Fish(vec2d pos_, vec2d velo_, TexImage* tex_, double maxspd);
+	Fish(vec2d pos_, vec2d velo_, GLuint shader);
+	Fish(vec2d pos_, vec2d velo_, TexImageWithShader* tex_, double maxspd);
 	virtual ~Fish();
 
 	//情報を更新
