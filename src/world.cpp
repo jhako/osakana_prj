@@ -175,6 +175,15 @@ void World::update()
 	//ステップの更新
 	step += 1;
 
+	//ノイズの追加
+	{
+		std::lock_guard<std::mutex> lock(world_mtx);
+		while(!future_noise_list.empty())
+		{
+			add_noise_to_world(new Noise(future_noise_list.back()));
+			future_noise_list.pop_back();
+		}
+	}
 
 //	//for debug
 //	auto end_t = std::chrono::system_clock::now();
@@ -280,6 +289,7 @@ void World::update_entities()
 		shark->update(this);
 	}
 }
+
 
 void World::render()
 {
@@ -451,24 +461,30 @@ void	World::add_food_to_world(Food* food)
 
 void	World::add_noise_to_world(Noise* noise)
 {
-	//先頭消去
-	Noise* fnoise = noises.front();
-	noises.pop_front();
-	if(!fnoise->death())
-	{
-		int pre_idx = fnoise->get_pidx();
-		parti_noises.at(pre_idx).erase(parti_noises.at(pre_idx).find(fnoise->get_id()));
-	}
-	delete fnoise;
-	//リストに追加
-	noises.push_back(noise);
+		//先頭消去
+		Noise* fnoise = noises.front();
+		noises.pop_front();
+		if(!fnoise->death())
+		{
+			int pre_idx = fnoise->get_pidx();
+			parti_noises.at(pre_idx).erase(parti_noises.at(pre_idx).find(fnoise->get_id()));
+		}
+		delete fnoise;
+		//リストに追加
+		noises.push_back(noise);
 
-	//どこの領域にいるかを計算・更新
-	int idx = (int)(noise->get_pos().x / parti_w) + (int)(noise->get_pos().y / parti_h) * parti_nx;
-	parti_noises.at(idx).insert(std::make_pair(noise->get_id(), noise));
-	noise->set_pidx(idx);
+		//どこの領域にいるかを計算・更新
+		int idx = (int)(noise->get_pos().x / parti_w) + (int)(noise->get_pos().y / parti_h) * parti_nx;
+		parti_noises.at(idx).insert(std::make_pair(noise->get_id(), noise));
+		noise->set_pidx(idx);
 }
 
+
+void World::add_to_noise_list(vec2d pos)
+{
+	std::lock_guard<std::mutex> lock(world_mtx);
+	future_noise_list.push_back(pos);
+}
 
 
 GLuint	World::get_shader(){ return simple_shd->get_prog(); }

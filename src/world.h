@@ -8,6 +8,7 @@
 #include <memory>
 #include <deque>
 #include <GLFW/glfw3.h>
+#include <mutex>
 #include "vec2d.h"
 
 //--プロトタイプ宣言--
@@ -46,6 +47,7 @@ class World
 	//騒音
 	std::deque<Noise*> noises;
 	std::vector<std::map<int, Noise*>>  parti_noises;
+	std::vector<vec2d> future_noise_list; //ノイズ追加リスト
 	
 	//マウス用
 	vec2d	mouse_pos;
@@ -77,8 +79,11 @@ class World
 	//描画用シェーダ
 	std::unique_ptr<MyShader> simple_shd;
 
+	//mutex
+	std::mutex world_mtx;
+
 	//デバッグモード
-	bool debug_mode = true;
+	//bool debug_mode = true;
 
 public:
 	World(int w, int h);
@@ -90,6 +95,9 @@ public:
 
 	//エンティティ(魚・ターゲット)のアップデート
 	void update_entities();
+
+	//ノイズのリスト追加
+	void add_to_noise_list(vec2d pos);
 
 	//アクセサ
 	std::vector<Shark*>& get_sharks(){ return sharks; }
@@ -108,6 +116,7 @@ public:
 	void	add_noise_to_world(Noise * food);
 	void	set_touch_data(std::array<vec2d, 10>& pos_arr, int midx){ touch_pos = pos_arr; touch_maxidx = midx; }
 	GLuint	get_shader();
+	//std::mutex&	get_mtx(){ return world_mtx; }
 };
 
 
